@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DragoDoro · Colección 3D</title>
+  <meta name="description" content="Juego simple en 3D con Three.js: recolecta esferas, evita los obstáculos.">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #05070f; color: #e9edfb; font-family: Inter, system-ui, sans-serif; }
+    canvas { display: block; width: 100%; height: 100%; }
+
+    #ui {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none; display: flex; flex-direction: column; align-items: flex-end; padding: 24px;
+    }
+    #hud { pointer-events: auto; text-align: right; }
+    #hud .row { margin: 4px 0; font-size: 1.25rem; font-weight: 600; letter-spacing: .05em; }
+    #hud .value { color: #4BD8E8; }
+
+    #overlay {
+      position: absolute; inset: 0; background: rgba(10, 13, 24, .85);
+      display: grid; place-items: center; pointer-events: auto; z-index: 10;
+      text-align: center; border: 1px solid rgba(75, 216, 232, .3); backdrop-filter: blur(4px);
+    }
+    #overlay.hidden { display: none; }
+    #overlay h1 { font-family: 'Space Grotesk', Impact, sans-serif; font-size: clamp(2rem, 8vw, 4rem); margin-bottom: 8px; color: #4BD8E8; letter-spacing: .04em; }
+    #overlay p { margin-bottom: 22px; font-size: 1.1rem; color: #b8c4d6; max-width: 340px; line-height: 1.5; }
+    #controls-kbd { margin-bottom: 24px; font-size: .9rem; color: #8aa0b8; letter-spacing: .02em; }
+    #controls-kbd kbd {
+      display: inline-block; padding: 2px 8px; border: 1px solid #4BD8E8; border-radius: 4px;
+      background: #05070f; color: #4BD8E8; margin: 0 4px; font-family: monospace; font-size: .85rem;
+    }
+    button {
+      font-family: inherit; font-size: 1.1rem; font-weight: 600; padding: 12px 28px;
+      border: 1px solid #4BD8E8; border-radius: 6px; background: transparent; color: #4BD8E8;
+      cursor: pointer; transition: transform .1s, box-shadow .2s, background .2s;
+    }
+    button:hover { background: rgba(75, 216, 232, .12); box-shadow: 0 0 18px rgba(75, 216, 232, .25); }
+    button:active { transform: translateY(1px); }
+
+    a.back {
+      position: absolute; bottom: 24px; left: 24px; color: #8aa0b8; text-decoration: none;
+      font-size: .9rem; display: inline-flex; align-items: center; gap: 6px;
+    }
+    a.back:hover { color: #4BD8E8; }
+
+    @media (max-width: 600px) { #hud .row { font-size: 1rem; } button { font-size: 1rem; padding: 10px 22px; } }
+  </style>
+</head>
+<body>
+
+  <canvas id="glcanvas"></canvas>
+
+  <div id="ui">
+    <div id="hud">
+      <div class="row">Puntaje <span id="score" class="value">0</span></div>
+      <div class="row">Tiempo <span id="time" class="value">0s</span></div>
+    </div>
+  </div>
+
+  <div id="overlay">
+    <h1 id="overlay-title">Colección 3D</h1>
+    <p id="overlay-text">Recolecta las esferas doradas y evita los obstáculos rojos.</p>
+    <div id="controls-kbd">
+      <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>
+      o
+      <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd>
+      para moverte
+    </div>
+    <button id="btn-start">Empezar a jugar</button>
+  </div>
+
+  <a class="back" href="../index.html">← Volver al portafolio</a>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.166.1/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.166.1/examples/jsm/"
+      }
+    }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+
+    /* =========================================================================
+       CONFIGURACIÓN
+       ========================================================================= */
+    const CANVAS = document.getElementById('glcanvas');
+    const OVERLAY = document.getElementById('overlay');
+    const BTN_START = document.getElementById('btn-start');
+    const EL_SCORE = document.getElementById('score');
+    const EL_TIME = document.getElementById('time');
+    const EL_TITLE = document.getElementById('overlay-title');
+    const EL_TEXT = document.getElementById('overlay-text');
+
+    const MOVE_SPEED = 11;      // unidades por segundo
+    const SPAWN_INTERVAL = 900; // ms entre apariciones
+    const OBSTACLE_CHANCE = 0.35; // probabilidad de que sea obstáculo vs esfera
+    const CAMERA_HEIGHT = 14;
+    const CAMERA_DIST = 22;
+
+    /* =========================================================================
+       ESCENA
+       ========================================================================= */
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x05070f);
+    scene.fog = new THREE.FogExp2(0x05070f, 0.035);
+
+    const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 200);
+    camera.position.set(0, CAMERA_HEIGHT, -CAMERA_DIST);
+    camera.lookAt(0, 0, 0);
+
+    const renderer = new THREE.WebGLRenderer({ canvas: CANVAS, antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.shadowMap.enabled = true;
+
+    const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambient);
+
+    const sun = new THREE.DirectionalLight(0x4BD8E8, 1.2);
+    sun.position.set(10, 20, 10);
+    sun.castShadow = true;
+    sun.shadow.camera.left = -25;
+    sun.shadow.camera.right = 25;
+    sun.shadow.camera.top = 25;
+    sun.shadow.camera.bottom = -25;
+    scene.add(sun);
+
+    const fill = new THREE.PointLight(0xff5c93, 0.6);
+    fill.position.set(-12, 8, 12);
+    scene.add(fill);
+
+    // Suelo
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(200, 200),
+      new THREE.MeshStandardMaterial({ color: 0x121729, roughness: .9 })
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    const grid = new THREE.GridHelper(200, 40, 0x4BD8E8, 0x1e2a3e);
+    scene.add(grid);
+
+    /* =========================================================================
+       JUGADOR
+       ========================================================================= */
+    const player = new THREE.Mesh(
+      new THREE.BoxGeometry(1.6, 1.6, 1.6),
+      new THREE.MeshStandardMaterial({ color: 0x4BD8E8, roughness: .4, metalness: .2 })
+    );
+    player.position.y = 0.8;
+    player.castShadow = true;
+    scene.add(player);
+
+    const playerBox = new THREE.Box3();
+
+    /* =========================================================================
+       OBJETOS DINÁMICOS
+       ========================================================================= */
+    const collectibles = []; // { mesh, box }
+    const obstacles = [];    // { mesh, box }
+
+    function spawnObject() {
+      const isObstacle = Math.random() < OBSTACLE_CHANCE;
+      const x = (Math.random() - 0.5) * 34;
+      const z = (Math.random() - 0.5) * 34;
+
+      if (isObstacle) {
+        const mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(1.8, 1.8, 1.8),
+          new THREE.MeshStandardMaterial({ color: 0xff5c93, roughness: .4 })
+        );
+        mesh.position.set(x, 0.9, z);
+        mesh.castShadow = true;
+        scene.add(mesh);
+        obstacles.push({ mesh, box: new THREE.Box3() });
+      } else {
+        const mesh = new THREE.Mesh(
+          new THREE.SphereGeometry(0.7, 16, 16),
+          new THREE.MeshStandardMaterial({ color: 0xffc24b, roughness: .2, metalness: .6 })
+        );
+        mesh.position.set(x, 0.7, z);
+        mesh.castShadow = true;
+        scene.add(mesh);
+        collectibles.push({ mesh, box: new THREE.Box3() });
+      }
+    }
+
+    /* =========================================================================
+       ESTADO DEL JUEGO
+       ========================================================================= */
+    let score = 0;
+    let seconds = 0;
+    let gameActive = false;
+    let lastSpawn = 0;
+    const keys = {};
+
+    window.addEventListener('keydown', (e) => { keys[e.code] = true; });
+    window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+    function startGame() {
+      score = 0;
+      seconds = 0;
+      EL_SCORE.textContent = '0';
+      EL_TIME.textContent = '0s';
+      gameActive = true;
+      OVERLAY.classList.add('hidden');
+
+      // Limpiar objetos viejos
+      [...collectibles, ...obstacles].forEach(o => scene.remove(o.mesh));
+      collectibles.length = 0;
+      obstacles.length = 0;
+
+      player.position.set(0, 0.8, 0);
+      lastSpawn = performance.now();
+    }
+
+    function gameOver() {
+      gameActive = false;
+      EL_TITLE.textContent = 'Game Over';
+      EL_TEXT.textContent = `Recogiste ${score} esferas en ${seconds}s.`;
+      BTN_START.textContent = 'Jugar de nuevo';
+      OVERLAY.classList.remove('hidden');
+    }
+
+    BTN_START.addEventListener('click', () => {
+      if (!gameActive) startGame();
+    });
+
+    /* =========================================================================
+       BUCLE PRINCIPAL
+       ========================================================================= */
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const dt = clock.getDelta();
+      const now = performance.now();
+
+      if (gameActive) {
+        // Movimiento del jugador
+        const move = new THREE.Vector3();
+        if (keys['KeyW'] || keys['ArrowUp'])    move.z -= 1;
+        if (keys['KeyS'] || keys['ArrowDown'])  move.z += 1;
+        if (keys['KeyA'] || keys['ArrowLeft'])  move.x -= 1;
+        if (keys['KeyD'] || keys['ArrowRight']) move.x += 1;
+        if (move.length() > 0) move.normalize();
+        player.position.add(move.multiplyScalar(MOVE_SPEED * dt));
+        player.position.y = 0.8;
+
+        // Limitar al área de juego
+        player.position.x = Math.max(-26, Math.min(26, player.position.x));
+        player.position.z = Math.max(-26, Math.min(26, player.position.z));
+
+        // Seguir al jugador con la cámara (suave)
+        const targetCam = new THREE.Vector3(
+          player.position.x,
+          CAMERA_HEIGHT,
+          player.position.z - CAMERA_DIST
+        );
+        camera.position.lerp(targetCam, dt * 6);
+        camera.lookAt(player.position);
+
+        // Spawnear objetos
+        if (now - lastSpawn > SPAWN_INTERVAL) {
+          spawnObject();
+          lastSpawn = now;
+        }
+
+        // Rotar y actualizar esferas
+        for (let i = collectibles.length - 1; i >= 0; i--) {
+          const c = collectibles[i];
+          c.mesh.rotation.y += dt * 2;
+          c.mesh.rotation.x += dt * 1.5;
+          c.mesh.position.y = 0.7 + Math.sin(now * 0.003 + i) * 0.15;
+          c.box.setFromObject(c.mesh);
+
+          playerBox.setFromObject(player);
+          if (playerBox.intersectsBox(c.box)) {
+            scene.remove(c.mesh);
+            collectibles.splice(i, 1);
+            score += 1;
+            EL_SCORE.textContent = String(score);
+          }
+        }
+
+        // Actualizar obstáculos
+        for (let i = obstacles.length - 1; i >= 0; i--) {
+          const o = obstacles[i];
+          o.box.setFromObject(o.mesh);
+          playerBox.setFromObject(player);
+          if (playerBox.intersectsBox(o.box)) {
+            gameOver();
+            return;
+          }
+        }
+
+        // Temporizador
+        seconds += dt;
+        EL_TIME.textContent = `${Math.floor(seconds)}s`;
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    /* =========================================================================
+       RESIZE
+       ========================================================================= */
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    animate();
+  </script>
+</body>
+</html>
