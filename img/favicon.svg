@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Marca: el mismo cubo de vóxeles del hero, dibujado en SVG. -->
+  <rect width="32" height="32" rx="5" fill="#0A0D18"/>
+  <!-- cara superior -->
+  <polygon points="16,5 26,11 16,17 6,11" fill="#4BD8E8"/>
+  <!-- cara izquierda -->
+  <polygon points="6,11 16,17 16,27 6,21" fill="#1A2138"/>
+  <!-- cara derecha -->
+  <polygon points="26,11 16,17 16,27 26,21" fill="#26304F"/>
+  <!-- juntas -->
+  <g stroke="#0A0D18" stroke-width="1" opacity=".85">
+    <line x1="16" y1="5" x2="16" y2="17"/>
+    <line x1="6" y1="11" x2="26" y2="11"/>
+    <line x1="11" y1="8" x2="21" y2="14"/>
+    <line x1="21" y1="8" x2="11" y2="14"/>
+    <line x1="16" y1="17" x2="16" y2="27"/>
+    <line x1="6" y1="16" x2="16" y2="22"/>
+    <line x1="26" y1="16" x2="16" y2="22"/>
+  </g>
+  <!-- destello de acento -->
+  <polygon points="16,5 21,8 16,11 11,8" fill="#7DF05C"/>
+</svg>

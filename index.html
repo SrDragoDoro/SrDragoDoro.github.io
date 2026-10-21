@@ -1,102 +1,147 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mi Portafolio</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-                'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-                sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        
-        .container {
-            background: white;
-            border-radius: 20px;
-            padding: 60px 40px;
-            max-width: 600px;
-            width: 100%;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            text-align: center;
-        }
-        
-        h1 {
-            color: #333;
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            font-weight: 700;
-        }
-        
-        .subtitle {
-            color: #666;
-            font-size: 1.2em;
-            margin-bottom: 30px;
-        }
-        
-        .description {
-            color: #555;
-            line-height: 1.6;
-            margin-bottom: 40px;
-        }
-        
-        .links {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-        
-        .btn {
-            display: inline-block;
-            padding: 12px 30px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            text-decoration: none;
-            border-radius: 50px;
-            font-weight: 600;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
-        }
-        
-        .btn-secondary {
-            background: #f0f0f0;
-            color: #333;
-        }
-        
-        .btn-secondary:hover {
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DragoDoro · Game &amp; .NET Developer</title>
+<meta name="description" content="Portafolio de DragoDoro: desarrollador de videojuegos en Unity y de herramientas de escritorio en .NET. Proyectos reales, código abierto y herramientas de Windows.">
+<meta property="og:title" content="DragoDoro · Game &amp; .NET Developer">
+<meta property="og:description" content="Videojuegos en Unity y herramientas de escritorio en .NET. Código abierto, releases y documentación de progreso.">
+<meta property="og:image" content="https://srdragodoro.github.io/img/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0A0D18">
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <div class="container">
-        <h1>¡Hola! 👋</h1>
-        <p class="subtitle">Bienvenido a mi Portafolio</p>
-        <p class="description">
-            Este es mi sitio web personal. Aquí podrás encontrar mis proyectos, 
-            habilidades y formas de contactarme.
-        </p>
-        <div class="links">
-            <a href="https://github.com/tu-usuario" class="btn">Ver GitHub</a>
-            <a href="mailto:tu@email.com" class="btn btn-secondary">Contactarme</a>
-        </div>
+
+<!-- Enlace de salto: accesibilidad, aparece al tabular -->
+<a class="skip" href="#proyectos" data-i18n="hero.cta">Ver proyectos</a>
+
+<!-- ── Barra de navegación ───────────────────────────────────────── -->
+<header class="nav">
+  <div class="wrap nav__in">
+    <a class="nav__brand" href="#top" aria-label="DragoDoro, inicio">
+      <canvas class="nav__mark" width="22" height="22" aria-hidden="true"></canvas>
+      <span>DragoDoro</span>
+    </a>
+    <nav class="nav__links" id="nav-links" aria-label="Secciones">
+      <a href="#proyectos" data-i18n="nav.projects">Proyectos</a>
+      <a href="#habilidades" data-i18n="nav.skills">Habilidades</a>
+      <a href="#sobre-mi" data-i18n="nav.about">Sobre mí</a>
+      <a href="#contacto" data-i18n="nav.contact">Contacto</a>
+    </nav>
+    <button class="nav__toggle" type="button" aria-expanded="false" aria-controls="nav-links" aria-label="Abrir menú">
+      <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
+    </button>
+    <button class="lang" type="button">
+      <span data-lang="es">ES</span><span aria-hidden="true">/</span><span data-lang="en">EN</span>
+      <span class="visually-hidden">Cambiar idioma / Change language</span>
+    </button>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- ── Hero ────────────────────────────────────────────────────── -->
+  <section class="hero" aria-labelledby="hero-name">
+    <!-- Cubo de vóxeles: se dibuja en canvas, no es una imagen -->
+    <canvas class="hero__cube" aria-hidden="true"></canvas>
+
+    <div class="hero__panel">
+      <p class="hero__role" data-i18n="hero.role">Game Developer · .NET Developer</p>
+      <h1 class="hero__name" id="hero-name">Drago<br>Doro</h1>
+      <p class="hero__lead" data-i18n="hero.lead"></p>
+      <div class="hero__actions">
+        <a class="btn" href="#proyectos" data-i18n="hero.cta">Ver proyectos</a>
+        <a class="btn btn--ghost" href="https://github.com/SrDragoDoro" target="_blank" rel="noopener me">GitHub ↗</a>
+      </div>
     </div>
+
+    <!-- Nota del canvas: el cubo se genera con código, semilla = fecha de hoy -->
+    <div class="hero__note">
+      <p><span data-i18n="cube.label">Cubo nº</span> <b class="hero__seed">—</b></p>
+      <p class="hero__note-text" data-i18n="cube.note">Se arma con código a partir de la fecha de hoy.</p>
+      <button class="hero__again" type="button" data-i18n="cube.again">Armar otro</button>
+    </div>
+  </section>
+
+  <!-- ── Proyectos ──────────────────────────────────────────────── -->
+  <!-- El contenido de las tarjetas se genera desde js/data.js -->
+  <section class="sect wrap" id="proyectos" aria-labelledby="projects-title">
+    <header class="sect__head">
+      <h2 class="sect__title" id="projects-title" data-i18n="projects.title">Proyectos</h2>
+      <p class="sect__lead" data-i18n="projects.lead"></p>
+    </header>
+    <div class="pillars"></div>
+  </section>
+
+  <!-- ── Habilidades ────────────────────────────────────────────── -->
+  <section class="sect wrap sect--alt" id="habilidades" aria-labelledby="skills-title">
+    <header class="sect__head">
+      <h2 class="sect__title" id="skills-title" data-i18n="skills.title">Habilidades</h2>
+      <p class="sect__lead" data-i18n="skills.lead"></p>
+    </header>
+    <div class="skills"></div>
+  </section>
+
+  <!-- ── Sobre mí ───────────────────────────────────────────────── -->
+  <section class="sect wrap" id="sobre-mi" aria-labelledby="about-title">
+    <header class="sect__head">
+      <h2 class="sect__title" id="about-title" data-i18n="about.title">Sobre mí</h2>
+    </header>
+    <div class="about">
+      <div class="about__side">
+        <img class="about__photo" src="img/avatar.webp" alt="Foto de perfil de DragoDoro" width="320" height="320" loading="lazy">
+        <ul class="about__facts"></ul>
+      </div>
+      <div class="about__text"></div>
+    </div>
+
+    <!-- Trayectoria: se rellena desde js/data.js -->
+    <div class="journey">
+      <h3 class="kicker" data-i18n="journey.title">Trayectoria</h3>
+      <ol class="journey__list"></ol>
+    </div>
+  </section>
+
+</main>
+
+<noscript>
+  <p class="wrap" style="padding-block:24px">
+    Este portafolio se construye con JavaScript en el navegador. Si lo desactivas,
+    los proyectos siguen estando en
+    <a href="https://github.com/SrDragoDoro">github.com/SrDragoDoro</a>.
+  </p>
+</noscript>
+
+<!-- ── Contacto ─────────────────────────────────────────────────── -->
+<footer class="foot" id="contacto">
+  <div class="wrap">
+    <h2 class="foot__title" data-i18n="footer.title">Hablemos</h2>
+    <p class="foot__p" data-i18n="footer.lead"></p>
+    <ul class="foot__links"></ul>
+    <p class="foot__made" data-i18n="footer.made"></p>
+  </div>
+</footer>
+
+<!-- ── Ficha de proyecto (visor) ────────────────────────────────── -->
+<dialog class="detail" aria-labelledby="detail-title">
+  <div class="detail__bar">
+    <h2 class="detail__title" id="detail-title"></h2>
+    <button class="detail__close" type="button" data-i18n="detail.close">Cerrar</button>
+  </div>
+  <div class="detail__stage"></div>
+  <div class="detail__thumbs"></div>
+  <div class="detail__body"></div>
+</dialog>
+
+<script src="js/data.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/main.js"></script>
 </body>
 </html>
