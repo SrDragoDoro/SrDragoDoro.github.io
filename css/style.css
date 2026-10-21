@@ -673,3 +673,69 @@ button { font: inherit; color: inherit; }
   }
   .reveal { opacity: 1; transform: none; }
 }
+
+/* ── 11. Juego interactivo embebido ──────────────────────────────────────── */
+.juego__wrap {
+  position: relative;
+  width: 100%;
+  max-width: 720px;
+  margin: 24px auto 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #05070f;
+  aspect-ratio: 16 / 9;
+  min-height: 320px;
+}
+#juego-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: #05070f;
+}
+.juego__ui {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+  z-index: 5;
+  padding: 12px;
+}
+.juego__hud {
+  margin-left: auto;
+  text-align: right;
+  pointer-events: auto;
+}
+.juego__row { margin: 4px 0; font-size: 1rem; font-weight: 600; letter-spacing: .05em; }
+.juego__value { color: var(--cyan); }
+.juego__overlay {
+  position: absolute; inset: 0;
+  background: rgba(10, 13, 24, .85);
+  display: grid; place-items: center;
+  pointer-events: auto; z-index: 10;
+  text-align: center; border: 1px solid rgba(75, 216, 232, .3);
+  backdrop-filter: blur(4px);
+}
+.juego__overlay.hidden { display: none; }
+.juego__overlay h1 { font-family: var(--f-display); font-size: clamp(1.5rem, 6vw, 2.5rem); margin-bottom: 8px; color: var(--cyan); }
+.juego__overlay p { margin-bottom: 18px; font-size: 1rem; color: #b8c4d6; max-width: 300px; line-height: 1.5; }
+.juego__kbd { margin-bottom: 18px; font-size: .85rem; color: #8aa0b8; }
+.juego__kbd kbd {
+  display: inline-block; padding: 2px 8px; border: 1px solid var(--cyan); border-radius: 4px;
+  background: #05070f; color: var(--cyan); margin: 0 4px; font-family: var(--f-mono); font-size: .8rem;
+}
+button.juego__btn {
+  font-family: inherit; font-size: 1rem; font-weight: 600; padding: 10px 24px;
+  border: 1px solid var(--cyan); border-radius: 6px; background: transparent; color: var(--cyan);
+  cursor: pointer;
+}
+button.juego__btn:hover { background: rgba(75, 216, 232, .12); }
+.juego__hint { text-align: center; color: var(--ink-3); font-size: .9rem; margin-top: 12px; }
+
+@media (max-width: 600px) {
+  .juego__wrap { min-height: 240px; }
+  .juego__hud { font-size: .9rem; }
+}

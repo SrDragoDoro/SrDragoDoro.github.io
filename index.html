@@ -16,6 +16,14 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
+
+<script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.166.1/build/three.module.js"
+    }
+  }
+</script>
 </head>
 <body>
 
@@ -109,6 +117,33 @@
     </div>
   </section>
 
+  <!-- ── Juego interactivo ────────────────────────────────────── -->
+  <section class="sect wrap sect--alt" id="juego-interactivo" aria-labelledby="juego-title">
+    <header class="sect__head">
+      <h2 class="sect__title" id="juego-title" data-i18n="juego.title">Juega</h2>
+      <p class="sect__lead" data-i18n="juego.lead"></p>
+    </header>
+    <div class="juego__wrap">
+      <div id="juego-ui" class="juego__ui">
+        <div class="juego__hud">
+          <div class="juego__row">Puntaje <span id="juego-score" class="juego__value">0</span></div>
+          <div class="juego__row">Tiempo <span id="juego-time" class="juego__value">0s</span></div>
+        </div>
+        <div id="juego-overlay" class="juego__overlay">
+          <h1 id="juego-overlay-title">Colección 3D</h1>
+          <p id="juego-overlay-text">Recolecta las esferas doradas y evita los obstáculos rojos.</p>
+          <div class="juego__kbd">
+            <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>
+            o
+            <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd>
+          </div>
+          <button id="juego-btn-start" class="juego__btn">Empezar a jugar</button>
+        </div>
+      </div>
+      <canvas id="juego-canvas"></canvas>
+    </div>
+    <p class="juego__hint" data-i18n="juego.hint">Mueve el cubo con WASD o las flechas.</p>
+  </section>
 </main>
 
 <noscript>
@@ -143,5 +178,6 @@
 <script src="js/data.js"></script>
 <script src="js/fx.js"></script>
 <script src="js/main.js"></script>
+<script type="module" src="js/game.js"></script>
 </body>
 </html>

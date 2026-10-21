@@ -451,6 +451,9 @@ window.UI = {
     'footer.title': 'Hablemos',
     'footer.lead': '¿Un juego, una herramienta de Windows o un proyecto en Unity? Escríbeme por cualquiera de estos canales.',
     'footer.made': 'Hecho a mano: sin plantillas y sin dependencias. El cubo de arriba se arma con código.',
+    'juego.title': 'Juega',
+    'juego.lead': 'Juego en 3D hecho con Three.js. Recolecta esferas doradas y evita los obstáculos rojos.',
+    'juego.hint': 'Mueve el cubo con WASD o las flechas.'
   },
   en: {
     'nav.projects': 'Projects',
@@ -483,5 +486,8 @@ window.UI = {
     'footer.title': 'Let’s talk',
     'footer.lead': 'A game, a Windows tool or a Unity project? Reach me on any of these channels.',
     'footer.made': 'Handmade: no templates and no dependencies. The cube up top is assembled by code.',
+    'juego.title': 'Play',
+    'juego.lead': '3D game made with Three.js. Collect golden spheres and avoid red obstacles.',
+    'juego.hint': 'Move the cube with WASD or arrow keys.'
   },
 };
