@@ -35,29 +35,53 @@
   };
 
   /* ── 2. Idioma ────────────────────────────────────────────────────────── */
-  /* Español por defecto; la preferencia se guarda en localStorage. */
+  /* Los idiomas disponibles viven en window.LANGS (js/data.js). La
+   * preferencia guardada manda; si no hay, se usa el idioma del navegador. */
 
-  let lang = 'es';
-  try { lang = localStorage.getItem('lang') || 'es'; } catch (e) { /* sin storage */ }
-  if (lang !== 'es' && lang !== 'en') lang = 'es';
+  const LANGS = window.LANGS || [{ code: 'es', label: 'ES', name: 'Español' }];
+  const LANGS_CODES = LANGS.map((l) => l.code);
 
-  /** Texto de interfaz por clave. */
-  const t = (key) => (UI[lang] && UI[lang][key]) || UI.es[key] || key;
+  function pickLang() {
+    let saved = null;
+    try { saved = localStorage.getItem('lang'); } catch (e) { /* sin storage */ }
+    if (saved && LANGS_CODES.includes(saved)) return saved;
 
-  /** Traduce un valor que puede ser string o { es, en }. */
-  const tx = (v) => (v && typeof v === 'object' ? v[lang] : v);
+    const nav = String(navigator.language || 'es').slice(0, 2).toLowerCase();
+    return LANGS_CODES.includes(nav) ? nav : LANGS_CODES[0];
+  }
+
+  let lang = pickLang();
+
+  /** Texto de interfaz por clave, con español como red de seguridad. */
+  const t = (key) =>
+    (UI[lang] && UI[lang][key]) || (UI.es && UI.es[key]) || key;
+
+  /** Contenido localizado de un bloque (proyecto, pilar, habilidad…). */
+  const loc = (obj) => (obj && (obj[lang] || obj.es)) || {};
+
+  /** Traduce un valor que puede ser string o { es, en, ja }. */
+  const tx = (v) => {
+    if (v == null) return '';
+    if (typeof v !== 'object') return v;
+    return v[lang] ?? v.es ?? v.en ?? '';
+  };
 
   /* ── 3. Render ────────────────────────────────────────────────────────── */
 
   function render() {
     document.documentElement.lang = lang;
+    document.title = t('meta.title');
 
-    // Textos fijos marcados en el HTML con data-i18n.
+    const desc = $('meta[name="description"]');
+    if (desc) desc.setAttribute('content', t('meta.description'));
+
+    // Textos fijos marcados en el HTML con data-i18n y sus etiquetas ARIA.
     $$('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
+    $$('[data-i18n-aria-label]').forEach((el) => {
+      el.setAttribute('aria-label', t(el.dataset.i18nAriaLabel));
+    });
 
-    // Indicador del conmutador ES/EN.
-    $$('[data-lang]').forEach((el) => el.classList.toggle('on', el.dataset.lang === lang));
-
+    renderLangSwitch();
     renderPillars();
     renderSkills();
     renderAbout();
@@ -69,6 +93,28 @@
 
     // Las secciones recién pintadas también entran al hacer scroll.
     setupReveal();
+
+    // Avisa a otros módulos (game.js) del cambio de idioma.
+    document.dispatchEvent(new CustomEvent('langchange', { detail: { lang } }));
+  }
+
+  /** Conmutador de idioma: un botón por cada entrada de window.LANGS. */
+  function renderLangSwitch() {
+    const host = $('.lang');
+    if (!host) return;
+
+    host.setAttribute('aria-label', t('lang.label'));
+    host.replaceChildren(...LANGS.map((l) =>
+      h('button', {
+        type: 'button',
+        class: `lang__btn${l.code === lang ? ' on' : ''}`,
+        'data-set-lang': l.code,
+        'aria-pressed': String(l.code === lang),
+        title: l.name,
+        lang: l.code,
+        text: l.label,
+      })
+    ));
   }
 
   /* ── 4. Secciones ─────────────────────────────────────────────────────── */
@@ -78,10 +124,11 @@
     const host = $('.pillars');
     host.replaceChildren(...PILLARS.map((pillar) => {
       const items = PROJECTS.filter((p) => p.pillar === pillar.id);
+      const P = loc(pillar);
 
       const head = h('header', { class: 'pillar__head' },
-        h('h3', { class: 'pillar__title', text: pillar[lang].name }),
-        h('p', { class: 'pillar__blurb', text: pillar[lang].blurb })
+        h('h3', { class: 'pillar__title', text: P.name }),
+        h('p', { class: 'pillar__blurb', text: P.blurb })
       );
 
       const grid = h('div', { class: 'grid' }, items.map(card));
@@ -101,18 +148,19 @@
   /** Habilidades: un bloque por grupo, con sus tecnologías. */
   function renderSkills() {
     const host = $('.skills');
-    host.replaceChildren(...SKILLS.map((s) =>
-      h('article', { class: 'skill', style: `--c:${s.color}` },
-        h('h3', { class: 'skill__title', text: s[lang].title }),
-        h('p', { class: 'skill__text', text: s[lang].text }),
-        h('ul', { class: 'skill__list' }, s[lang].items.map((i) => h('li', { text: i })))
-      )
-    ));
+    host.replaceChildren(...SKILLS.map((s) => {
+      const S = loc(s);
+      return h('article', { class: 'skill', style: `--c:${s.color}` },
+        h('h3', { class: 'skill__title', text: S.title }),
+        h('p', { class: 'skill__text', text: S.text }),
+        h('ul', { class: 'skill__list' }, S.items.map((i) => h('li', { text: i })))
+      );
+    }));
   }
 
   /** Sobre mí: texto, cifras y trayectoria. */
   function renderAbout() {
-    const A = ABOUT[lang];
+    const A = loc(ABOUT);
 
     $('.about__text').replaceChildren(...A.body.map((p) => h('p', { text: p })));
 
@@ -127,8 +175,8 @@
         h('li', { class: 'journey__item' },
           h('p', { class: 'journey__when', text: tx(e.when) || '' }),
           h('div', {},
-            h('h4', { class: 'journey__role', text: e[lang].role }),
-            h('p', { class: 'journey__text', text: e[lang].text }))
+            h('h4', { class: 'journey__role', text: loc(e).role }),
+            h('p', { class: 'journey__text', text: loc(e).text }))
         )
       ));
     }
@@ -189,18 +237,18 @@
     );
   }
 
-  /** Cifras medidas del proyecto. */
-  function statsOf(L) {
-    if (!L.stats) return null;
+  /** Cifras medidas del proyecto. `stats` vive en el proyecto, no en el idioma. */
+  function statsOf(p) {
+    if (!p.stats) return null;
     return h('ul', { class: 'card__nums' },
-      L.stats.map(([value, label]) =>
-        h('li', {}, h('b', { text: value }), h('span', { text: label })))
+      p.stats.map(([value, label]) =>
+        h('li', {}, h('b', { text: value }), h('span', { text: tx(label) })))
     );
   }
 
   /** Construye la tarjeta de un proyecto. */
   function card(p) {
-    const L = p[lang];
+    const L = loc(p);
     const pillar = PILLARS.find((x) => x.id === p.pillar);
 
     // --- medio de la tarjeta -------------------------------------------
@@ -244,7 +292,7 @@
       ),
       h('p', { class: 'card__text', text: L.text }),
       roleOf(L),
-      statsOf(L),
+      statsOf(p),
       h('ul', { class: 'card__tags' }, p.tags.map((tag) => h('li', { text: tag }))),
       h('p', { class: 'card__links' }, linksOf(p))
     );
@@ -281,7 +329,7 @@
     const p = PROJECTS.find((x) => x.id === id);
     if (!p) return;
 
-    const L = p[lang];
+    const L = loc(p);
     const pillar = PILLARS.find((x) => x.id === p.pillar);
     current = { p, items: galleryOf(p), i: 0 };
 
@@ -308,7 +356,7 @@
       ),
       h('p', { class: 'detail__text', text: L.text }),
       roleOf(L),
-      statsOf(L),
+      statsOf(p),
       h('ul', { class: 'card__tags' }, p.tags.map((tag) => h('li', { text: tag }))),
       h('p', { class: 'card__links' }, linksOf(p)),
     ].filter(Boolean));
@@ -331,7 +379,7 @@
 
     current.i = (i + n) % n;
     const it = items[current.i];
-    const title = current.p[lang].title;
+    const title = loc(current.p).title;
 
     const el = it.video
       ? h('video', { src: it.video, poster: it.poster, controls: '', playsinline: '', preload: 'metadata' })
@@ -511,10 +559,14 @@
     sweepRaf = requestAnimationFrame(() => { sweepRaf = 0; sweepReveal(); });
   }, { passive: true });
 
-  // Conmutador de idioma.
-  $('.lang').addEventListener('click', () => {
-    lang = lang === 'es' ? 'en' : 'es';
-    try { localStorage.setItem('lang', lang); } catch (e) { /* sin storage */ }
+  // Conmutador de idioma (delegado: los botones se repintan en cada render).
+  $('.lang').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-set-lang]');
+    if (!btn) return;
+    const next = btn.dataset.setLang;
+    if (!LANGS_CODES.includes(next) || next === lang) return;
+    lang = next;
+    try { localStorage.setItem('lang', lang); } catch (err) { /* sin storage */ }
     render();
   });
 

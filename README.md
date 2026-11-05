@@ -5,7 +5,7 @@ En línea: <https://srdragodoro.github.io>
 
 Sitio estático **sin build y sin dependencias**: `index.html` + `css/` + `js/`, publicado
 tal cual con GitHub Pages. El sitio está en español por defecto y tiene conmutador a
-inglés.
+inglés y japonés (también detecta el idioma del navegador y recuerda la elección).
 
 ---
 
@@ -39,9 +39,13 @@ Abre `js/data.js` y copia un objeto de `window.PROJECTS`:
   gallery: ['shots/mi-captura-1'],   // más capturas para la ficha
   tags: ['Unity 6', 'C#'],
   links: { repo: 'https://github.com/…', live: 'https://…', release: 'https://…' },
-  stats: [['40+', 'estelas'], ['2', 'releases']],
+  stats: [
+    ['40+', { es: 'estelas', en: 'trails', ja: '残像' }],
+    ['2', { es: 'releases', en: 'releases', ja: 'リリース' }],
+  ],
   es: { title: '…', status: 'En desarrollo', text: '…', role: '…' },
   en: { title: '…', status: 'In development', text: '…', role: '…' },
+  ja: { title: '…', status: '開発中', text: '…', role: '…' },
 }
 ```
 
@@ -57,18 +61,32 @@ Los otros bloques de `data.js`:
 | Bloque       | Qué es                                                         |
 | ------------ | -------------------------------------------------------------- |
 | `PROFILE`    | Nombre, avatar y enlace a GitHub.                               |
+| `LANGS`      | Los idiomas disponibles: código, etiqueta y nombre.             |
 | `PILLARS`    | Las secciones de proyectos y su color.                          |
 | `PROJECTS`   | Los proyectos.                                                  |
 | `SKILLS`     | Los grupos de habilidades.                                      |
 | `JOURNEY`    | La trayectoria (fechas e hitos).                                |
 | `ABOUT`      | El texto de "Sobre mí" y las cifras.                            |
 | `CONTACT`    | Los canales. Los que no tengan `href` no se muestran.          |
-| `UI`         | Todos los textos fijos de la interfaz, en `es` y en `en`.       |
+| `UI`         | Todos los textos fijos de la interfaz, en `es`, `en` y `ja`.    |
+
+`LANGS` es la única fuente de verdad del conmutador: el HTML solo tiene un
+contenedor `<div class="lang">` y `main.js` pinta un botón por idioma. Las cifras
+de `stats` viven en el proyecto (no dentro de `es`/`en`/`ja`) y su etiqueta puede
+ser un texto o un objeto `{ es, en, ja }` que se traduce al vuelo.
+
+### Añadir un idioma
+
+1. Añade la entrada en `window.LANGS` (`{ code: 'xx', label: 'XX', name: '…' }`).
+2. Copia el bloque `ja` de `PILLARS`, `PROJECTS`, `SKILLS`, `JOURNEY`, `ABOUT` y
+   `CONTACT`, y añade su clave en `UI`.
+3. No hay que tocar el HTML ni `main.js`: el conmutador y los textos fijos se
+   generan solos. Si falta una traducción, se usa el español como respaldo.
 
 Para añadir un canal de contacto, descomenta la línea del email en `CONTACT`:
 
 ```js
-{ label: { es: 'Email', en: 'Email' }, href: 'mailto:tu@correo.com' },
+{ label: { es: 'Email', en: 'Email', ja: 'メール' }, href: 'mailto:tu@correo.com' },
 ```
 
 ## Imágenes y vídeos

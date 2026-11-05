@@ -25,6 +25,38 @@ import * as THREE from 'three';
   const elTitle = document.getElementById('juego-overlay-title');
   const elText = document.getElementById('juego-overlay-text');
 
+  /* ── Idioma ─────────────────────────────────────────────────────────── */
+  /* El texto del juego sale de window.UI, igual que el resto del sitio. */
+
+  let lang = document.documentElement.lang || 'es';
+  let overlayState = 'idle';   // 'idle' | 'over'
+
+  const ui = (key) => {
+    const table = window.UI || {};
+    return (table[lang] && table[lang][key]) || (table.es && table.es[key]) || key;
+  };
+
+  function renderOverlay() {
+    if (overlayState === 'over') {
+      if (elTitle) elTitle.textContent = ui('juego.over');
+      if (elText) {
+        elText.textContent = ui('juego.result')
+          .replace('{score}', String(score))
+          .replace('{seconds}', String(Math.floor(seconds)));
+      }
+      if (btnStart) btnStart.textContent = ui('juego.again');
+    } else {
+      if (elTitle) elTitle.textContent = ui('juego.overlayTitle');
+      if (elText) elText.textContent = ui('juego.overlayText');
+      if (btnStart) btnStart.textContent = ui('juego.start');
+    }
+  }
+
+  document.addEventListener('langchange', (e) => {
+    lang = e.detail.lang;
+    renderOverlay();
+  });
+
   const MOVE_SPEED = 12;
   const SPAWN_INTERVAL = 800;
   const OBSTACLE_CHANCE = 0.35;
@@ -251,6 +283,8 @@ import * as THREE from 'three';
     if (elScore) elScore.textContent = '0';
     if (elTime) elTime.textContent = '0s';
     gameActive = true;
+    overlayState = 'idle';
+    renderOverlay();
     if (overlay) overlay.classList.add('hidden');
 
     // Limpiar todo lo previo
@@ -271,9 +305,8 @@ import * as THREE from 'three';
 
   function gameOver() {
     gameActive = false;
-    if (elTitle) elTitle.textContent = 'Game Over';
-    if (elText) elText.textContent = `Recogiste ${score} esferas en ${seconds}s.`;
-    if (btnStart) btnStart.textContent = 'Jugar de nuevo';
+    overlayState = 'over';
+    renderOverlay();
     if (overlay) overlay.classList.remove('hidden');
   }
 
@@ -414,6 +447,7 @@ import * as THREE from 'three';
     renderer.render(scene, camera);
   }
 
+  renderOverlay();
   initThree();
   animate();
 })();
