@@ -32,11 +32,13 @@ serve.ps1             Servidor local de desarrollo (Windows, sin dependencias).
 - **Barra superior:** clic en cualquier checkpoint, o en `‹` / `›`.
 - **Teclado:** `←` / `→` cambian de sección. En Videojuegos y Creaciones, `A` / `D` o `↑` / `↓`
   cambian de proyecto. `Esc` cierra la ficha de proyecto.
-- **Cubo:** haz clic sobre él para un salto vertical con rotación de 180°. El cubo es el ícono
-  `img/icono.png`.
-- **Inicio:** la parte superior reproduce vídeos en cadena (mp4 locales o YouTube): al terminar
-  uno pasa al siguiente deslizándose de derecha a izquierda. Usa las flechas del reproductor para
-  ir al anterior o al siguiente.
+- **Cubo:** haz clic sobre él para un salto vertical con rotación de 180°. El cubo (tu ícono
+  `img/icono.png`) vive en el **pie de página**, debajo de todo el contenido, así que nunca se
+  solapa con las opciones.
+- **Inicio:** el vídeo ocupa toda la pantalla y se queda fijo; al hacer scroll, la presentación
+  (título y menú) se le superpone con un degradado suave mientras el vídeo se desvanece y crece
+  un poco, dejando ver el fondo animado. Al terminar un vídeo pasa al siguiente deslizándose de
+  derecha a izquierda; usa las flechas del reproductor para el anterior o el siguiente.
 - **Videojuegos y Creaciones:** carruseles con flechas, puntos, teclado y swipe en móvil. Al
   cambiar de proyecto, un telón de terciopelo rojo cierra la escena, cambia la tarjeta/repo y
   vuelve a abrirse. El botón *PLAY / VER CÓDIGO* abre el brief técnico del proyecto.
@@ -186,7 +188,8 @@ También vale `python -m http.server 8770`.
 
 - **Canvas:** `requestAnimationFrame`, `devicePixelRatio` limitado a 2, `dt` acotado para evitar
   saltos al volver a la pestaña. El fondo tiene tres capas de parallax y una rejilla que reacciona
-  al desplazamiento del cubo.
+  al desplazamiento del cubo. El suelo y el cubo se dibujan dentro del pie de página (elemento en
+  flujo), no fijos al borde de la ventana, y se mueven con el scroll.
 - **Física:** salto parabólico de ~0,45 s, rotación de 180° o 360° con easing, squash & stretch
   al aterrizar, estela de partículas y anillo de impacto. El cubo es el ícono `img/icono.png`.
 - **Dash de sección:** al cambiar de nivel, el cubo crece hasta ~5× su tamaño en una capa de
@@ -197,9 +200,12 @@ También vale `python -m http.server 8770`.
   de terciopelo rojo, guirnalda dorada y flecos. Cierra en 330 ms, cambia la tarjeta y el repo
   detrás del telón, y abre en 360 ms. El sello central muestra el número de nivel y el proyecto
   nuevo.
-- **Vídeos en cadena:** el inicio reproduce una lista editable (mp4 locales o YouTube). Al
-  terminar un vídeo pasa al siguiente con una transición de derecha a izquierda; tiene flechas,
-  puntos y swipe. YouTube usa la IFrame API para detectar el final.
+- **Vídeos en cadena:** el inicio reproduce una lista editable (mp4 locales o YouTube) a pantalla
+  completa. El reproductor queda fijo con `position: sticky`; al hacer scroll se desvanece y
+  escala con el progreso, y la presentación (con una veladura translúcida) se le superpone de
+  forma suave, dejando ver el fondo animado. Al terminar un vídeo pasa al siguiente con una
+  transición de derecha a izquierda; tiene flechas, puntos y swipe. YouTube usa la IFrame API
+  para detectar el final y, si el embed no carga, muestra un enlace de respaldo.
 - **Color triggers:** paletas RGB rojo/negro (las del ícono) interpoladas por frame con un factor
   exponencial; la UI cambia con variables CSS.
 - **Audio:** osciladores, envolventes y ruido generado en `AudioContext`. No hay archivos ni

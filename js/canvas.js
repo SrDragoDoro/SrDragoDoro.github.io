@@ -93,6 +93,8 @@
       this.dpr = 1;
       this.groundH = 130;
       this.groundY = 0;
+      this.groundVisible = false;
+      this.footerEl = null;
 
       this.time = 0;
       this.last = 0;
@@ -138,6 +140,9 @@
       // Ícono del cubo del usuario, usado como avatar del jugador.
       this.iconImage = new Image();
       this.iconImage.src = 'img/icono.png';
+
+      // El suelo y el cubo viven en el pie de página (no fijos abajo).
+      this.footerEl = document.getElementById('stage-footer');
 
       this.reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       if (window.matchMedia) {
@@ -196,13 +201,30 @@
       this.groundH = mobile
         ? clamp(this.h * 0.14, 92, 140)
         : clamp(this.h * 0.16, 96, 170);
-      this.groundY = this.h - this.groundH;
+      this.updateFooter();
 
       this.size = clamp(this.w * 0.052, 46, 76);
       this.x = this.anchorFor(this.progress);
       if (this.dash && oldW && this.w !== oldW) this.dash = null;
 
       if (oldW && this.shapes.length) this.buildShapes();
+    }
+
+    /* El suelo y el cubo se dibujan dentro del pie de página, no fijos
+     * al borde inferior de la ventana. */
+    updateFooter() {
+      if (!this.footerEl) {
+        this.groundY = this.h - this.groundH;
+        this.groundVisible = true;
+        return;
+      }
+      const rect = this.footerEl.getBoundingClientRect();
+      // La parte alta del pie deja aire para el cubo; la línea del suelo
+      // está más abajo.
+      const pad = clamp(rect.height * 0.45, 90, 150);
+      this.groundY = rect.top + pad;
+      this.groundH = clamp(rect.height - pad, 60, 320);
+      this.groundVisible = rect.bottom > 0 && rect.top < this.h;
     }
 
     anchorFor(progress) {
@@ -220,7 +242,7 @@
 
       this.shapes = Array.from({ length: count }, (_, i) => ({
         x: rand() * this.w,
-        y: 40 + rand() * Math.max(120, this.groundY * 0.82),
+        y: 40 + rand() * Math.max(120, this.h * 0.82),
         size: 26 + rand() * 110,
         layer: 0.12 + rand() * 0.5,
         type: i % 3,
@@ -299,6 +321,8 @@
     }
 
     hitTest(clientX, clientY) {
+      this.updateFooter();
+      if (!this.groundVisible) return false;
       const centerY = this.groundY - this.jumpOffset - this.size * 0.5;
       const pad = this.size * 0.34;
       return (
@@ -357,13 +381,16 @@
 
     /* ── Dash gigante de transición ────────────────────────────────────── */
     startDash(targetX, direction) {
+      // Si el pie de página no está a la vista, el dash aterriza en la base
+      // de la ventana para que la transición siga teniendo sentido.
+      const dashGround = this.groundVisible ? this.groundY : this.h;
       this.dash = {
         t: 0,
         dur: DASH_DURATION,
         fromX: this.x,
         toX: targetX,
-        fromY: this.groundY - this.jumpOffset - this.size * 0.5,
-        toY: this.groundY - this.size * 0.5,
+        fromY: dashGround - this.jumpOffset - this.size * 0.5,
+        toY: dashGround - this.size * 0.5,
         arc: clamp(this.h * 0.34, 150, 310),
         spin: direction * TAU * 2,
         startAngle: this.angle,
@@ -375,7 +402,7 @@
       };
 
       if (!this.reduced) {
-        const y = this.groundY - this.jumpOffset - this.size * 0.5;
+        const y = dashGround - this.jumpOffset - this.size * 0.5;
         for (let i = 0; i < 22; i++) {
           const a = Math.random() * TAU;
           this.particles.push({
@@ -433,6 +460,7 @@
 
     update(dt) {
       this.prevX = this.x;
+      this.updateFooter();
 
       // Paleta: lerp exponencial (rápido pero suave).
       const pk = this.paletteSnap ? 1 : 1 - Math.exp(-dt * 4.2);
@@ -527,7 +555,7 @@
 
         // Chispa ambiental ocasional junto al cubo.
         this.sparkTimer -= dt;
-        if (!this.reduced && this.sparkTimer <= 0) {
+        if (!this.reduced && this.groundVisible && this.sparkTimer <= 0) {
           this.sparkTimer = 1.4 + Math.random() * 1.6;
           this.particles.push({
             x: this.x + (Math.random() - 0.5) * this.size * 1.7,
@@ -603,38 +631,44 @@
       this.drawSky(ctx);
       this.drawShapes(ctx);
       this.drawGrid(ctx);
-      this.drawGround(ctx);
 
-      // Durante el dash el cubo pequeño desaparece: lo sustituye el gigante.
-      if (!this.dash) {
-        this.drawShadow(ctx);
-        this.drawCube(ctx);
+      if (this.groundVisible) {
+        this.drawGround(ctx);
+
+        // Durante el dash el cubo pequeño desaparece: lo sustituye el gigante.
+        if (!this.dash) {
+          this.drawShadow(ctx);
+          this.drawCube(ctx);
+        }
+
+        this.drawParticles(ctx);
+        this.drawRings(ctx);
       }
 
-      this.drawParticles(ctx);
-      this.drawRings(ctx);
       this.drawDash();
     }
 
     drawSky(ctx) {
       const p = this.palette;
-      const grad = ctx.createLinearGradient(0, 0, 0, this.groundY);
+      const horizon = this.groundVisible ? clamp(this.groundY, 0, this.h) : this.h;
+
+      const grad = ctx.createLinearGradient(0, 0, 0, this.h);
       grad.addColorStop(0, rgbCss(p.bg2));
       grad.addColorStop(0.62, rgbCss(p.bg));
-      grad.addColorStop(1, rgbCss(mixRgb(p.bg, p.accent, 0.09)));
+      grad.addColorStop(1, rgbCss(mixRgb(p.bg, p.accent, 0.06)));
       ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, this.w, this.groundY + 1);
+      ctx.fillRect(0, 0, this.w, this.h);
 
       // Resplandor del horizonte.
       const glow = ctx.createRadialGradient(
-        this.w * 0.5, this.groundY, 0,
-        this.w * 0.5, this.groundY, Math.max(this.w, this.h) * 0.62
+        this.w * 0.5, horizon, 0,
+        this.w * 0.5, horizon, Math.max(this.w, this.h) * 0.62
       );
       glow.addColorStop(0, rgbCss(p.accent, 0.13));
       glow.addColorStop(0.5, rgbCss(p.accent, 0.035));
       glow.addColorStop(1, rgbCss(p.accent, 0));
       ctx.fillStyle = glow;
-      ctx.fillRect(0, 0, this.w, this.groundY);
+      ctx.fillRect(0, 0, this.w, this.h);
 
       // Viñeta superior para que el HUD respire.
       const top = ctx.createLinearGradient(0, 0, 0, 130);
@@ -692,7 +726,7 @@
       const p = this.palette;
       const spacing = this.w < 620 ? 48 : 66;
       const offset = (this.scroll * 0.34 + this.time * 12) % spacing;
-      const maxY = this.groundY;
+      const maxY = this.groundVisible ? clamp(this.groundY, 0, this.h) : this.h;
 
       ctx.save();
       ctx.lineWidth = 1;
@@ -725,22 +759,27 @@
 
     drawGround(ctx) {
       const p = this.palette;
-      const y = this.groundY;
-      const h = this.h - y;
+      if (!this.groundVisible) return;
 
-      const grad = ctx.createLinearGradient(0, y, 0, this.h);
+      // Solo la franja del pie de página que está dentro de la ventana.
+      const y = Math.max(0, this.groundY);
+      const bottom = Math.min(this.h, this.groundY + this.groundH);
+      if (bottom <= 0 || y >= this.h || bottom <= y) return;
+      const bandH = bottom - y;
+
+      const grad = ctx.createLinearGradient(0, y, 0, bottom);
       grad.addColorStop(0, rgbCss(p.ground));
       grad.addColorStop(0.5, rgbCss(mixRgb(p.ground, p.ground2, 0.35)));
       grad.addColorStop(1, rgbCss(p.ground2));
       ctx.fillStyle = grad;
-      ctx.fillRect(0, y, this.w, h);
+      ctx.fillRect(0, y, this.w, bandH);
 
       const spacing = this.w < 620 ? 58 : 84;
       const offset = (this.scroll * 0.9) % spacing;
 
       ctx.save();
       ctx.beginPath();
-      ctx.rect(0, y, this.w, h);
+      ctx.rect(0, y, this.w, bandH);
       ctx.clip();
 
       // Rejilla del suelo.
@@ -748,10 +787,10 @@
       ctx.lineWidth = 1;
       ctx.beginPath();
       for (let x = -offset; x <= this.w + spacing; x += spacing) {
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + 26, this.h);
+        ctx.moveTo(x, this.groundY);
+        ctx.lineTo(x + 26, bottom);
       }
-      for (let gy = y + 26; gy < this.h; gy += 30) {
+      for (let gy = y + 26; gy < bottom; gy += 30) {
         ctx.moveTo(0, gy);
         ctx.lineTo(this.w, gy);
       }
@@ -762,34 +801,35 @@
       const blockOffset = (this.scroll * 1.35) % blockGap;
       ctx.fillStyle = rgbCss(p.accent, 0.05);
       for (let x = -blockOffset; x < this.w + blockGap; x += blockGap) {
-        ctx.fillRect(x, y + 12, spacing * 0.9, 9);
-        ctx.fillRect(x + spacing * 0.35, y + 52, spacing * 0.55, 6);
+        ctx.fillRect(x, this.groundY + 12, spacing * 0.9, 9);
+        ctx.fillRect(x + spacing * 0.35, this.groundY + 52, spacing * 0.55, 6);
       }
       ctx.restore();
 
-      // Línea de neón.
+      // Línea de neón sobre el borde del suelo.
       ctx.save();
       ctx.shadowColor = rgbCss(p.accent, 0.95);
       ctx.shadowBlur = 22;
       ctx.strokeStyle = rgbCss(p.accent, 0.95);
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.moveTo(0, y + 0.5);
-      ctx.lineTo(this.w, y + 0.5);
+      ctx.moveTo(0, this.groundY + 0.5);
+      ctx.lineTo(this.w, this.groundY + 0.5);
       ctx.stroke();
 
       ctx.shadowBlur = 8;
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.78)';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(0, y + 1);
-      ctx.lineTo(this.w, y + 1);
+      ctx.moveTo(0, this.groundY + 1);
+      ctx.lineTo(this.w, this.groundY + 1);
       ctx.stroke();
       ctx.restore();
     }
 
     drawShadow(ctx) {
       const p = this.palette;
+      if (!this.groundVisible) return;
       const height = this.jumpOffset;
       const shrink = clamp(1 - height / 420, 0.42, 1);
       const w = this.size * 0.94 * shrink;

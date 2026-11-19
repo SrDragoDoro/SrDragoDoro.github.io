@@ -96,9 +96,14 @@ window.GD_DATA = {
       poster: 'img/ba2-gameplay-poster.webp',
     },
     {
-      title: 'Tu vídeo de YouTube (pega el enlace en js/data.js)',
+      title: 'DorosLaInvasión · Gameplay',
       type: 'youtube',
-      youtubeId: '',
+      youtubeId: '0bhb1rM0TEM',
+    },
+    {
+      title: 'Oops, me infectó · Game Jam',
+      type: 'youtube',
+      youtubeId: 'UK7SPIfaufM',
     },
   ],
 
@@ -241,6 +246,36 @@ window.GD_DATA = {
       media: null,
       links: {
         repo: 'https://github.com/SrDragoDoro/DorosLaInvasion',
+      },
+    },
+    {
+      id: 'oopsmeinfecto',
+      group: 'juegos',
+      name: 'Oops, me infectó',
+      engine: 'Game Jam · Unity',
+      year: '2026',
+      status: 'GAME JAM',
+      difficulty: 'harder',
+      difficultyNote: 'Del concepto al build en el tiempo límite',
+      accent: '#FF2D20',
+      summary:
+        'El último proyecto realizado: un juego hecho en una game jam, del concepto al build jugable dentro del tiempo límite.',
+      description:
+        'Proyecto de game jam en equipo. La meta: cerrar una idea jugable en pocos días —concepto, mecánicas, arte provisional y build— y dejarla lista para que cualquiera la pruebe. El código está en el repositorio compartido del equipo.',
+      patterns: [
+        'Prototipado rápido y alcance mínimo viable',
+        'Build jugable dentro del plazo',
+        'Iteración sobre las mecánicas durante la jam',
+        'Repositorio compartido con el equipo',
+      ],
+      bars: [
+        { label: 'Arquitectura & Sistemas', value: 62 },
+        { label: 'Gameplay & Pulido', value: 72 },
+      ],
+      tags: ['Unity', 'C#', 'Game Jam', 'Equipo'],
+      media: null,
+      links: {
+        repo: 'https://github.com/Alysaurio/Oopsmeinfecto',
       },
     },
     {

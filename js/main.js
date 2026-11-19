@@ -43,8 +43,11 @@
   let modalVideo = null;
   const carousels = {};
   const videoPlayers = {};
+  let parallaxPending = false;
 
   /* ── Utilidades ────────────────────────────────────────────────────── */
+  const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+
   function initials(name) {
     return String(name).replace(/[^a-zA-Z0-9]/g, '').slice(0, 2).toUpperCase();
   }
@@ -291,6 +294,7 @@
 
       nextScreen.hidden = false;
       els.main.scrollTop = 0;
+      handleHomeParallax();
       nextScreen.classList.add(direction > 0 ? 'screen--in-right' : 'screen--in-left');
       if (index === 0) playHomeVideo();
       if (index === 1 || index === 2) syncProjectVideos();
@@ -587,7 +591,9 @@
 
     if (video.type === 'youtube' && video.youtubeId) {
       return `<div class="video-slide">
-        <div class="video-slide__yt" data-yt="${index}" data-yt-id="${escapeText(video.youtubeId)}"></div>
+        <div class="video-slide__yt" data-yt="${index}" data-yt-id="${escapeText(video.youtubeId)}">
+          <a class="video-slide__yt-link" href="https://www.youtube.com/watch?v=${escapeText(video.youtubeId)}" target="_blank" rel="noopener noreferrer">Ver en YouTube ↗</a>
+        </div>
         ${badge}
       </div>`;
     }
@@ -651,6 +657,36 @@
     Object.keys(videoPlayers).forEach((key) => videoPlayers[key].pauseVideo());
   }
 
+  /* El vídeo se desvanece y crece un poco mientras la presentación sube y se
+   * le superpone: así el fondo animado queda visible en la bienvenida. */
+  function handleHomeParallax() {
+    const videoEl = $('.home-video');
+    if (!videoEl || !els.main) return;
+
+    if (state.section !== 0) {
+      videoEl.style.opacity = '';
+      videoEl.style.transform = '';
+      videoEl.style.pointerEvents = '';
+      return;
+    }
+
+    const height = videoEl.offsetHeight || 1;
+    const progress = clamp(els.main.scrollTop / height, 0, 1);
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    videoEl.style.opacity = String(1 - progress);
+    videoEl.style.transform = reduced ? '' : `scale(${1 + progress * 0.045})`;
+    videoEl.style.pointerEvents = progress > 0.85 ? 'none' : '';
+  }
+
+  function onMainScroll() {
+    if (parallaxPending) return;
+    parallaxPending = true;
+    requestAnimationFrame(() => {
+      parallaxPending = false;
+      handleHomeParallax();
+    });
+  }
+
   function loadYouTubeApi() {
     const hasYouTube = (DATA.videos || []).some((video) => video.type === 'youtube' && video.youtubeId);
     if (!hasYouTube) return;
@@ -692,6 +728,12 @@
           },
         },
       });
+
+      // Si el embed no llega a crearse (sin red, bloqueado…), muestra el enlace.
+      window.setTimeout(() => {
+        const embedded = holder.tagName === 'IFRAME' || holder.querySelector('iframe');
+        if (!embedded) holder.classList.add('is-fallback');
+      }, 2600);
     });
   }
 
@@ -973,6 +1015,8 @@
     els.prevSection.addEventListener('click', () => goSection(state.section - 1));
     els.nextSection.addEventListener('click', () => goSection(state.section + 1));
 
+    els.main.addEventListener('scroll', onMainScroll, { passive: true });
+
     els.soundToggle.addEventListener('click', () => {
       const active = sound.toggle();
       els.soundToggle.setAttribute('aria-pressed', String(active));
@@ -1111,6 +1155,7 @@
       renderSkills();
       renderContact();
       bindEvents();
+      handleHomeParallax();
 
       if (scene) scene.setSection(0, true);
       setHud(0, true);

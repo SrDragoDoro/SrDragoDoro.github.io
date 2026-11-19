@@ -64,9 +64,9 @@
 
   <!-- ── 0% · INICIO ─────────────────────────────────────────────────── -->
   <section class="screen screen--home" id="sec-inicio" data-section="0" aria-labelledby="title-inicio">
-    <div class="home">
 
-      <!-- Subsección superior: vídeos en cadena -->
+    <!-- Vídeo a pantalla completa; al bajar, la presentación se le superpone -->
+    <div class="home-video">
       <div class="video-carousel" aria-label="Vídeos">
         <div class="video-carousel__stage" id="video-stage">
           <div class="video-carousel__track" id="video-track"></div>
@@ -79,53 +79,57 @@
           <p class="video-carousel__hint">Al terminar, pasa al siguiente</p>
         </div>
       </div>
+    </div>
 
-      <!-- Subsección inferior: presentación y menú -->
-      <div class="home__intro">
-        <p class="eyebrow"><span class="pulse" aria-hidden="true"></span> <span id="player-alias">PLAYER 01</span> · GAME PROGRAMMER</p>
-        <h1 class="hero-title" id="title-inicio">
-          <span class="hero-title__line">DRAGO</span>
-          <span class="hero-title__line hero-title__line--accent">DORO</span>
-        </h1>
-        <p class="hero-role" id="player-role">Gameplay <span>&amp;</span> Systems Programmer</p>
-        <p class="hero-lead" id="player-tagline"></p>
-        <ul class="hero-chips" aria-label="Tecnologías principales">
-          <li>UNITY 6</li>
-          <li>C#</li>
-          <li>C++</li>
-          <li>SHADERS</li>
-        </ul>
+    <!-- Presentación: se superpone al vídeo al hacer scroll -->
+    <div class="home__presentation">
+      <div class="home">
+        <div class="home__intro">
+          <p class="eyebrow"><span class="pulse" aria-hidden="true"></span> <span id="player-alias">PLAYER 01</span> · GAME PROGRAMMER</p>
+          <h1 class="hero-title" id="title-inicio">
+            <span class="hero-title__line">DRAGO</span>
+            <span class="hero-title__line hero-title__line--accent">DORO</span>
+          </h1>
+          <p class="hero-role" id="player-role">Gameplay <span>&amp;</span> Systems Programmer</p>
+          <p class="hero-lead" id="player-tagline"></p>
+          <ul class="hero-chips" aria-label="Tecnologías principales">
+            <li>UNITY 6</li>
+            <li>C#</li>
+            <li>C++</li>
+            <li>SHADERS</li>
+          </ul>
+        </div>
+
+        <nav class="menu" aria-label="Menú principal">
+          <button class="menu__btn menu__btn--side" type="button" data-goto="2">
+            <span class="menu__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg>
+            </span>
+            <span class="menu__kicker">HERRAMIENTAS &amp; WEB</span>
+            <span class="menu__label">CREACIONES</span>
+          </button>
+
+          <button class="menu__btn menu__btn--play" type="button" data-goto="1">
+            <span class="menu__play" aria-hidden="true">▶</span>
+            <span class="menu__playtext">
+              <b>VIDEOJUEGOS</b>
+              <small>VER PROYECTOS</small>
+            </span>
+          </button>
+
+          <button class="menu__btn menu__btn--side" type="button" data-goto="3">
+            <span class="menu__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>
+            </span>
+            <span class="menu__kicker">PERFIL · SKILLS · CV</span>
+            <span class="menu__label">SOBRE MÍ</span>
+          </button>
+        </nav>
+
+        <p class="home__hint">
+          <kbd>←</kbd><kbd>→</kbd> navegar · <span>haz clic en el cubo para saltar</span>
+        </p>
       </div>
-
-      <nav class="menu" aria-label="Menú principal">
-        <button class="menu__btn menu__btn--side" type="button" data-goto="2">
-          <span class="menu__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg>
-          </span>
-          <span class="menu__kicker">HERRAMIENTAS &amp; WEB</span>
-          <span class="menu__label">CREACIONES</span>
-        </button>
-
-        <button class="menu__btn menu__btn--play" type="button" data-goto="1">
-          <span class="menu__play" aria-hidden="true">▶</span>
-          <span class="menu__playtext">
-            <b>VIDEOJUEGOS</b>
-            <small>VER PROYECTOS</small>
-          </span>
-        </button>
-
-        <button class="menu__btn menu__btn--side" type="button" data-goto="3">
-          <span class="menu__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>
-          </span>
-          <span class="menu__kicker">PERFIL · SKILLS · CV</span>
-          <span class="menu__label">SOBRE MÍ</span>
-        </button>
-      </nav>
-
-      <p class="home__hint">
-        <kbd>←</kbd><kbd>→</kbd> navegar · <span>haz clic en el cubo para saltar</span>
-      </p>
     </div>
   </section>
 
@@ -216,6 +220,9 @@
       </div>
     </div>
   </section>
+
+  <!-- ── Pie de página: el suelo con el cubo jugador ─────────────────── -->
+  <footer class="stage-footer" id="stage-footer" aria-hidden="true"></footer>
 
 </main>
 

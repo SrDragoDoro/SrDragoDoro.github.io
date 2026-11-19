@@ -163,7 +163,7 @@ button {
   overflow-x: hidden;
   overflow-y: auto;
   padding-top: calc(var(--hud-h) + 8px);
-  padding-bottom: calc(var(--ground-h) + 58px);
+  padding-bottom: 0;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: var(--accent) transparent;
@@ -193,7 +193,77 @@ button {
 }
 
 .screen--home {
-  padding-top: 4px;
+  max-width: none;
+  padding: 0;
+}
+
+/* Vídeo a pantalla completa del inicio: se queda fijo mientras la
+ * presentación sube y se le superpone al hacer scroll. */
+.home-video {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: calc(100svh - var(--hud-h) - 8px);
+  will-change: transform, opacity;
+}
+
+.home-video .video-carousel {
+  position: relative;
+  height: 100%;
+  margin: 0;
+}
+
+.home-video .video-carousel__stage {
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.home-video .video-carousel__bar {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  z-index: 5;
+  gap: 12px;
+  margin: 0;
+  padding: 8px 16px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  background: rgba(12, 2, 2, 0.62);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transform: translateX(-50%);
+}
+
+.home__presentation {
+  position: relative;
+  z-index: 2;
+  padding: 150px clamp(16px, 3.6vw, 48px) 40px;
+  /* Veladura suave: el fondo animado se ve a través de la presentación */
+  background:
+    linear-gradient(
+      180deg,
+      rgba(26, 4, 4, 0) 0px,
+      rgba(26, 4, 4, 0.52) 120px,
+      rgba(26, 4, 4, 0.36) 210px,
+      rgba(26, 4, 4, 0.24) 100%
+    );
+}
+
+.home__presentation .home {
+  margin: 0 auto;
+}
+
+/* Pie de página: el suelo y el cubo viven aquí, debajo de todo el contenido.
+ * La altura extra deja aire para que el cubo no quede tapado por la
+ * presentación y sea clickeable. */
+.stage-footer {
+  position: relative;
+  z-index: 1;
+  height: calc(var(--ground-h) + 130px);
+  margin-top: 6px;
 }
 
 .screen--in-right {
@@ -689,6 +759,7 @@ kbd {
 .home {
   width: 100%;
   max-width: 1000px;
+  margin: 0 auto;
   text-align: center;
 }
 
@@ -734,6 +805,43 @@ kbd {
 .video-slide video {
   object-fit: cover;
   background: #050202;
+}
+
+.video-slide__yt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(225, 6, 0, 0.16), transparent 58%),
+    linear-gradient(160deg, #140404, #070202);
+}
+
+.video-slide__yt-link {
+  position: relative;
+  z-index: 2;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border: 2px solid var(--accent);
+  border-radius: 12px;
+  background: rgba(12, 2, 2, 0.82);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-decoration: none;
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.45), 0 0 24px var(--accent-glow);
+}
+
+.video-slide__yt-link:hover {
+  border-color: #ffffff;
+  color: var(--accent-2);
+}
+
+.video-slide__yt.is-fallback .video-slide__yt-link {
+  display: inline-flex;
 }
 
 .video-slide__badge {
@@ -2892,10 +3000,6 @@ kbd {
 
   .menu__kicker {
     font-size: 8px;
-  }
-
-  .screen--home {
-    min-height: calc(100svh - var(--hud-h) - var(--ground-h) - 40px);
   }
 }
 
