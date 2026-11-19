@@ -36,9 +36,14 @@ serve.ps1             Servidor local de desarrollo (Windows, sin dependencias).
   `img/icono.png`) vive en el **pie de página**, debajo de todo el contenido, así que nunca se
   solapa con las opciones.
 - **Inicio:** el vídeo ocupa toda la pantalla y se queda fijo; al hacer scroll, la presentación
-  (título y menú) se le superpone con un degradado suave mientras el vídeo se desvanece y crece
-  un poco, dejando ver el fondo animado. Al terminar un vídeo pasa al siguiente deslizándose de
-  derecha a izquierda; usa las flechas del reproductor para el anterior o el siguiente.
+  (título y rueda de opciones) se le superpone con un degradado suave mientras el vídeo se
+  desvanece y crece un poco, dejando ver el fondo animado. La rueda usa `Imagenes/ballRecurso
+  8.png` como centro, pegada al borde derecho con la mitad fuera de pantalla. **Gira sola**: las
+  opciones (Videojuegos, Creaciones, Sobre mi, Mis redes) orbitan con el estilo de botones del
+  menú anterior y la tipografía Outfit, manteniéndose horizontales. Un puntero marca la opción
+  seleccionada (cambia según gira la rueda) y al pulsar la imagen se navega a ella; al pasar el
+  cursor la rueda frena. Al terminar un vídeo pasa al siguiente deslizándose de derecha a
+  izquierda; usa las flechas del reproductor para el anterior o el siguiente.
 - **Videojuegos y Creaciones:** carruseles con flechas, puntos, teclado y swipe en móvil. Al
   cambiar de proyecto, un telón de terciopelo rojo cierra la escena, cambia la tarjeta/repo y
   vuelve a abrirse. El botón *PLAY / VER CÓDIGO* abre el brief técnico del proyecto.

@@ -240,7 +240,8 @@ button {
 .home__presentation {
   position: relative;
   z-index: 2;
-  padding: 150px clamp(16px, 3.6vw, 48px) 40px;
+  min-height: clamp(560px, 66vh, 700px);
+  padding: 150px clamp(16px, 3.6vw, 48px) 60px;
   /* Veladura suave: el fondo animado se ve a través de la presentación */
   background:
     linear-gradient(
@@ -254,6 +255,138 @@ button {
 
 .home__presentation .home {
   margin: 0 auto;
+  max-width: 1160px;
+  padding-right: clamp(280px, 24vw, 440px);
+  text-align: left;
+}
+
+.home__presentation .home__intro {
+  align-items: flex-start;
+}
+
+.home__presentation .home .eyebrow {
+  justify-content: flex-start;
+}
+
+.home__presentation .hero-chips {
+  justify-content: flex-start;
+}
+
+/* Rueda de opciones: la imagen es el centro, pegada al borde derecho */
+.wheel {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  z-index: 2;
+  width: 0;
+  height: 0;
+  --radius: clamp(150px, 18vw, 250px);
+}
+
+.wheel__img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: clamp(240px, 24vw, 400px);
+  height: auto;
+  max-width: none;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 14px 30px rgba(0, 0, 0, 0.55));
+}
+
+.wheel__item {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 16px;
+  border: 2px solid rgba(255, 255, 255, 0.34);
+  border-radius: 13px;
+  background:
+    radial-gradient(120% 100% at 50% 0%, rgba(255, 255, 255, 0.18), transparent 55%),
+    linear-gradient(180deg, #263d65 0%, #152440 58%, #0d1729 100%);
+  box-shadow:
+    0 6px 0 #050a13,
+    0 12px 22px rgba(0, 0, 0, 0.45),
+    inset 0 2px 0 rgba(255, 255, 255, 0.3);
+  color: #f6fbff;
+  font-family: var(--font-display);
+  font-size: clamp(14px, 1.3vw, 18px);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transform-origin: 100% 50%;
+  transform: translate(-100%, -50%) rotate(calc(var(--angle) + var(--spin, 0deg))) translateX(var(--radius)) rotate(calc(-1 * (var(--angle) + var(--spin, 0deg))));
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    filter 0.18s ease;
+}
+
+.wheel__item:hover,
+.wheel__item:focus-visible {
+  filter: brightness(1.16);
+  border-color: var(--accent-2);
+  transform: translate(-100%, -50%) rotate(calc(var(--angle) + var(--spin, 0deg))) translateX(calc(var(--radius) + 12px)) rotate(calc(-1 * (var(--angle) + var(--spin, 0deg)))) scale(1.06);
+}
+
+.wheel__item.is-selected {
+  border-color: var(--accent-2);
+  color: #ffffff;
+  background:
+    radial-gradient(120% 100% at 50% 0%, rgba(255, 255, 255, 0.24), transparent 55%),
+    linear-gradient(180deg, #3b2a5e 0%, #201540 58%, #120c29 100%);
+  box-shadow:
+    0 6px 0 #050a13,
+    0 0 24px var(--accent-glow),
+    inset 0 2px 0 rgba(255, 255, 255, 0.32);
+}
+
+.wheel__item--empty {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent-glow);
+  pointer-events: none;
+}
+
+/* Puntero que marca la opción seleccionada (extremo izquierdo del arco) */
+.wheel__pointer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 4;
+  pointer-events: none;
+  transform: translateX(calc(-1 * var(--radius)));
+}
+
+.wheel__pointer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-style: solid;
+  border-width: 10px 0 10px 16px;
+  border-color: transparent transparent transparent var(--accent);
+  filter: drop-shadow(0 0 8px var(--accent-glow));
+  transform: translate(-100%, -50%);
+  animation: pointer-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes pointer-pulse {
+  0%, 100% { opacity: 1; transform: translate(-100%, -50%) scale(1); }
+  50% { opacity: 0.55; transform: translate(-90%, -50%) scale(0.92); }
 }
 
 /* Pie de página: el suelo y el cubo viven aquí, debajo de todo el contenido.
@@ -3150,6 +3283,52 @@ kbd {
     bottom: 8px;
     left: 8px;
     font-size: 9px;
+  }
+
+  .home__presentation {
+    min-height: 0;
+    padding: 150px 16px 40px;
+  }
+
+  .home__presentation .home {
+    padding-right: 0;
+    text-align: center;
+  }
+
+  .home__presentation .home__intro {
+    align-items: center;
+  }
+
+  .home__presentation .home .eyebrow {
+    justify-content: center;
+  }
+
+  .home__presentation .hero-chips {
+    justify-content: center;
+  }
+
+  .wheel-wrap {
+    position: relative;
+    height: clamp(320px, 88vw, 440px);
+    margin: 26px -32px 0;
+  }
+
+  .wheel {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    width: 0;
+    height: 0;
+    --radius: clamp(130px, 34vw, 190px);
+  }
+
+  .wheel__img {
+    width: clamp(200px, 56vw, 320px);
+  }
+
+  .wheel__item {
+    padding: 8px 12px;
+    font-size: 13px;
   }
 }
 

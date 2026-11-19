@@ -45,6 +45,14 @@
   const videoPlayers = {};
   let parallaxPending = false;
 
+  /* Rueda de opciones giratoria */
+  const WHEEL_ANGLES = [-90, -135, -180, -270];
+  let wheelSpinDeg = 0;
+  let wheelSelected = 2;
+  let wheelHover = false;
+  let wheelLast = 0;
+  let wheelActive = false;
+
   /* ── Utilidades ────────────────────────────────────────────────────── */
   const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 
@@ -687,6 +695,87 @@
     });
   }
 
+  /* ── Rueda de opciones ────────────────────────────────────────────── */
+  function initWheel() {
+    const wheel = $('.wheel');
+    if (!wheel) return;
+    const items = $$('.wheel__item[data-goto]', wheel);
+    if (!items.length) return;
+
+    wheel.style.setProperty('--spin', '0deg');
+
+    const wrap = $('.wheel-wrap');
+    if (wrap) {
+      wrap.addEventListener('pointerenter', () => { wheelHover = true; });
+      wrap.addEventListener('pointerleave', () => { wheelHover = false; });
+    }
+
+    // Clic sobre la imagen: navega a la opción que marca el puntero.
+    const img = $('.wheel__img', wheel);
+    if (img) {
+      img.style.pointerEvents = 'auto';
+      img.style.cursor = 'pointer';
+      img.addEventListener('click', () => {
+        const item = items[wheelSelected];
+        if (item && Number.isFinite(Number(item.dataset.goto))) {
+          sound.play('click');
+          goSection(Number(item.dataset.goto));
+        }
+      });
+    }
+
+    selectWheel(items, 2);
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    wheelActive = true;
+    wheelLast = performance.now();
+    requestAnimationFrame(wheelTick);
+  }
+
+  function wheelTick(now) {
+    if (!wheelActive) return;
+    const wheel = $('.wheel');
+    if (!wheel || !document.contains(wheel)) {
+      wheelActive = false;
+      return;
+    }
+    const items = $$('.wheel__item[data-goto]', wheel);
+
+    const dt = Math.min(0.05, (now - wheelLast) / 1000);
+    wheelLast = now;
+    const speedDeg = wheelHover ? 5 : 14;
+    wheelSpinDeg = (wheelSpinDeg + speedDeg * dt) % 360;
+    wheel.style.setProperty('--spin', wheelSpinDeg + 'deg');
+
+    // Opción seleccionada: la más cercana al puntero (180°, el extremo
+    // izquierdo del arco).
+    let best = -1;
+    let bestDist = Infinity;
+    items.forEach((item, index) => {
+      const base = WHEEL_ANGLES[index] || 0;
+      const world = ((base + wheelSpinDeg) % 360 + 360) % 360;
+      let delta = Math.abs(world - 180);
+      if (delta > 180) delta = 360 - delta;
+      if (delta < bestDist) {
+        bestDist = delta;
+        best = index;
+      }
+    });
+
+    if (best !== wheelSelected) {
+      wheelSelected = best;
+      selectWheel(items, best);
+    }
+
+    requestAnimationFrame(wheelTick);
+  }
+
+  function selectWheel(items, index) {
+    wheelSelected = index;
+    items.forEach((item, i) => item.classList.toggle('is-selected', i === index));
+  }
+
   function loadYouTubeApi() {
     const hasYouTube = (DATA.videos || []).some((video) => video.type === 'youtube' && video.youtubeId);
     if (!hasYouTube) return;
@@ -1156,6 +1245,7 @@
       renderContact();
       bindEvents();
       handleHomeParallax();
+      initWheel();
 
       if (scene) scene.setSection(0, true);
       setHud(0, true);
