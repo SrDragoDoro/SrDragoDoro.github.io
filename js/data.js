@@ -23,7 +23,8 @@ window.GD_DATA = {
 
   /* ── Secciones y color triggers ──────────────────────────────────────── */
   /* progress: posición del checkpoint en la barra de nivel (0–100).
-   * palette:  colores que el canvas interpola al cambiar de sección.       */
+   * palette:  colores que el canvas interpola al cambiar de sección.
+   *           Toda la web usa la paleta rojo/negro del ícono del cubo.      */
   sections: [
     {
       id: 'inicio',
@@ -31,60 +32,79 @@ window.GD_DATA = {
       short: 'LOBBY',
       progress: 0,
       palette: {
-        bg: '#0B192C',
-        bg2: '#050B16',
-        ground: '#06101F',
-        ground2: '#02070E',
-        accent: '#38BDF8',
-        accent2: '#22D3EE',
+        bg: '#1A0404',
+        bg2: '#0A0101',
+        ground: '#120202',
+        ground2: '#070000',
+        accent: '#E10600',
+        accent2: '#FF5A52',
       },
     },
     {
-      id: 'proyectos',
-      label: 'Niveles',
-      short: 'PROYECTOS',
+      id: 'juegos',
+      label: 'Videojuegos',
+      short: 'VIDEOJUEGOS',
       progress: 35,
       palette: {
-        bg: '#1E0B36',
-        bg2: '#0D041A',
-        ground: '#150724',
-        ground2: '#080210',
-        accent: '#C084FC',
-        accent2: '#A855F7',
+        bg: '#170304',
+        bg2: '#090101',
+        ground: '#100202',
+        ground2: '#060000',
+        accent: '#FF3B30',
+        accent2: '#FF7A70',
       },
     },
     {
-      id: 'skills',
-      label: 'Icon Kit',
-      short: 'SKILLS',
+      id: 'creaciones',
+      label: 'Creaciones',
+      short: 'CREACIONES',
       progress: 70,
       palette: {
-        bg: '#08291E',
-        bg2: '#03110C',
-        ground: '#051B14',
-        ground2: '#020C08',
-        accent: '#34D399',
-        accent2: '#10B981',
+        bg: '#1D0502',
+        bg2: '#0C0200',
+        ground: '#140302',
+        ground2: '#080100',
+        accent: '#FF2D20',
+        accent2: '#FF8A80',
       },
     },
     {
-      id: 'stats',
-      label: 'Stats',
-      short: 'PERFIL',
+      id: 'sobre-mi',
+      label: 'Sobre mi',
+      short: 'SOBRE MÍ',
       progress: 95,
       palette: {
-        bg: '#2B0D0D',
-        bg2: '#150505',
-        ground: '#1B0808',
-        ground2: '#0C0303',
-        accent: '#FB923C',
-        accent2: '#F43F5E',
+        bg: '#120305',
+        bg2: '#070101',
+        ground: '#0C0203',
+        ground2: '#040000',
+        accent: '#D40000',
+        accent2: '#FF453A',
       },
+    },
+  ],
+
+  /* ── Vídeos del inicio ────────────────────────────────────────────────── */
+  /* Se reproducen en cadena: al terminar uno pasa al siguiente.
+   * type: 'file' (mp4 local) o 'youtube' (pega el ID del vídeo).
+   * Si una entrada no tiene src/youtubeId se muestra un hueco en blanco.    */
+  videos: [
+    {
+      title: 'Bookworm Adventure 2 · Gameplay',
+      type: 'file',
+      src: 'video/ba2-gameplay.mp4',
+      poster: 'img/ba2-gameplay-poster.webp',
+    },
+    {
+      title: 'Tu vídeo de YouTube (pega el enlace en js/data.js)',
+      type: 'youtube',
+      youtubeId: '',
     },
   ],
 
   /* ── Proyectos / niveles ─────────────────────────────────────────────── */
   /*
+   * group:      'juegos' (sección Videojuegos) o 'creaciones' (Creaciones).
    * difficulty: 'normal' | 'harder' | 'insane' | 'demon'
    * bars:       las dos barras de progreso de la tarjeta.
    * patterns:   patrones de diseño / decisiones técnicas que se muestran en el modal.
@@ -93,13 +113,14 @@ window.GD_DATA = {
   projects: [
     {
       id: 'bookworm',
+      group: 'juegos',
       name: 'Bookworm Adventure 2',
       engine: 'Unity 6 · URP 2D',
       year: '2025 — 2026',
       status: 'EN DESARROLLO',
       difficulty: 'insane',
       difficultyNote: 'Lógica de puzzles + contenido data-driven',
-      accent: '#A855F7',
+      accent: '#FF5A52',
       summary:
         'Remake jugable en español del clásico de 2007: menú, mapa, tutorial y batallas de palabras con un tablero por partes.',
       description:
@@ -127,13 +148,14 @@ window.GD_DATA = {
     },
     {
       id: 'cloud2026',
+      group: 'juegos',
       name: 'Cloud2026',
       engine: 'Unity 6 · Unity Gaming Services',
       year: '2026',
       status: 'CURSO · 16 SEMANAS',
       difficulty: 'demon',
       difficultyNote: 'Cliente sin autoridad + economía en servidor',
-      accent: '#38BDF8',
+      accent: '#FF3B30',
       summary:
         'Juego con todo su estado en la nube: autenticación, guardado, economía, rankings y configuración remota.',
       description:
@@ -157,13 +179,14 @@ window.GD_DATA = {
     },
     {
       id: 'cursorrotator',
+      group: 'creaciones',
       name: 'CursorRotator',
       engine: 'C# · .NET 10 · WinForms',
       year: '2026',
       status: 'PUBLICADO · v2.5.2',
       difficulty: 'harder',
       difficultyNote: 'Interoperabilidad Win32 + rendimiento en reposo',
-      accent: '#34D399',
+      accent: '#FF7043',
       summary:
         'App de escritorio que instala paquetes de cursores y los rota sola, con estelas y efectos reactivos al hacer clic.',
       description:
@@ -192,13 +215,14 @@ window.GD_DATA = {
     },
     {
       id: 'doros',
+      group: 'juegos',
       name: 'DorosLaInvasión',
       engine: 'Unity 6 · URP 2D',
       year: '2025 — 2026',
       status: 'PROYECTO FINAL DE CURSO',
       difficulty: 'normal',
       difficultyNote: 'Primer juego completo, del enunciado al build',
-      accent: '#FB7185',
+      accent: '#FF1744',
       summary:
         'Juego 2D con cámara cinemática, input por action maps, sprites animados y audio. El primero que llevé de principio a fin.',
       description:
@@ -217,6 +241,38 @@ window.GD_DATA = {
       media: null,
       links: {
         repo: 'https://github.com/SrDragoDoro/DorosLaInvasion',
+      },
+    },
+    {
+      id: 'portfolio',
+      group: 'creaciones',
+      name: 'Este portafolio',
+      engine: 'HTML · CSS · JavaScript · Canvas',
+      year: '2026',
+      status: 'EN LÍNEA',
+      difficulty: 'harder',
+      difficultyNote: 'Interfaz jugable sin frameworks',
+      accent: '#E10600',
+      summary:
+        'La web que estás viendo: HUD estilo Geometry Dash, físicas propias del cubo, telón de teatro y todo el contenido en un solo archivo.',
+      description:
+        'Sitio estático sin build ni dependencias. El fondo y el cubo se dibujan en un canvas con física propia, los SFX se sintetizan con Web Audio API y todo el contenido vive en un único archivo de datos, así que se puede editar sin tocar el código.',
+      patterns: [
+        'JavaScript vanilla: cero dependencias',
+        'Canvas 2D para el mundo, el cubo y las partículas',
+        'Contenido data-driven en un solo archivo',
+        'Web Audio API para los sonidos',
+        'Accesibilidad y prefers-reduced-motion',
+      ],
+      bars: [
+        { label: 'Arquitectura & Sistemas', value: 78 },
+        { label: 'Gameplay & Pulido', value: 74 },
+      ],
+      tags: ['HTML', 'CSS', 'JavaScript', 'Canvas 2D', 'Web Audio', 'GitHub Pages'],
+      media: null,
+      links: {
+        repo: 'https://github.com/SrDragoDoro/SrDragoDoro.github.io',
+        live: 'https://srdragodoro.github.io',
       },
     },
   ],

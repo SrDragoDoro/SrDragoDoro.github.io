@@ -75,8 +75,8 @@
   }
 
   const DEFAULT_SKIN = {
-    base: '#0891b2',
-    accent: '#a5f3fc',
+    base: '#d40000',
+    accent: '#ff8a80',
     pattern: 'visor',
   };
 
@@ -134,6 +134,10 @@
       this.rings = [];
       this.shapes = [];
       this.dash = null;
+
+      // Ícono del cubo del usuario, usado como avatar del jugador.
+      this.iconImage = new Image();
+      this.iconImage.src = 'img/icono.png';
 
       this.reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       if (window.matchMedia) {
@@ -936,19 +940,26 @@
       ctx.restore();
     }
 
-    /* Dibuja el cubo centrado en (0, 0). Se reutiliza para el cubo normal y
-     * para el cubo gigante del dash, con cualquier tamaño y skin. */
+    /* Dibuja el cubo centrado en (0, 0). Usa el ícono del usuario; se reutiliza
+     * para el cubo normal y para el cubo gigante del dash. */
     paintCube(ctx, size, bodyBase, accent, pattern) {
       const unit = size / 64;
-      const radius = size * 0.16;
+      const img = this.iconImage;
 
       ctx.save();
 
-      // Halo.
-      ctx.shadowColor = rgbCss(accent, 0.62);
-      ctx.shadowBlur = Math.min(60, 20 * unit) + Math.sin(this.time * 3) * 3 * Math.min(unit, 2);
+      if (img && img.complete && img.naturalWidth > 0) {
+        ctx.shadowColor = rgbCss(accent, 0.55);
+        ctx.shadowBlur = Math.min(44, 14 * unit) + Math.sin(this.time * 3) * 2;
+        ctx.drawImage(img, -size / 2, -size / 2, size, size);
+        ctx.restore();
+        return;
+      }
 
-      // Cuerpo con bisel.
+      // Respaldo mientras carga el ícono: un cubo sencillo con visor.
+      const radius = size * 0.16;
+      ctx.shadowColor = rgbCss(accent, 0.62);
+      ctx.shadowBlur = Math.min(60, 20 * unit);
       const body = ctx.createLinearGradient(-size / 2, -size / 2, size / 2, size / 2);
       body.addColorStop(0, rgbCss(mixRgb(bodyBase, [255, 255, 255], 0.3)));
       body.addColorStop(0.46, rgbCss(bodyBase));
@@ -958,67 +969,20 @@
       ctx.fill();
       ctx.shadowBlur = 0;
 
-      // Patrón interior.
-      ctx.save();
-      roundRectPath(ctx, -size / 2, -size / 2, size, size, radius);
-      ctx.clip();
-      this.drawPattern(ctx, size, bodyBase, accent, pattern);
-      ctx.restore();
-
-      // Bisel interior.
-      ctx.lineWidth = 3 * unit;
-      ctx.strokeStyle = 'rgba(3, 8, 16, 0.88)';
-      roundRectPath(ctx, -size / 2, -size / 2, size, size, radius);
-      ctx.stroke();
-
-      ctx.lineWidth = 1.5 * unit;
-      const inner = size / 2 - size * 0.075;
-      roundRectPath(ctx, -inner, -inner, inner * 2, inner * 2, size * 0.11);
-      ctx.strokeStyle = rgbCss(accent, 0.55);
-      ctx.stroke();
-
-      // Brillo superior.
-      const shine = ctx.createLinearGradient(0, -size / 2, 0, 0);
-      shine.addColorStop(0, 'rgba(255, 255, 255, 0.28)');
-      shine.addColorStop(1, 'rgba(255, 255, 255, 0)');
-      ctx.fillStyle = shine;
-      roundRectPath(ctx, -size * 0.4, -size * 0.44, size * 0.8, size * 0.38, size * 0.08);
-      ctx.fill();
-
-      // Visor y ojos (simétricos: un giro de 180° se ve igual).
       const vw = size * 0.66;
       const vh = size * 0.28;
       const vy = -size * 0.02;
       ctx.fillStyle = 'rgba(2, 8, 14, 0.9)';
       roundRectPath(ctx, -vw / 2, vy - vh / 2, vw, vh, vh * 0.32);
       ctx.fill();
-      ctx.strokeStyle = rgbCss(accent, 0.35);
-      ctx.lineWidth = 1.2 * unit;
-      ctx.stroke();
-
+      ctx.fillStyle = rgbCss(mixRgb(accent, [255, 255, 255], 0.5));
       const eyeW = size * 0.135;
       const eyeH = size * 0.145;
-      const eyeGap = size * 0.055;
-      ctx.shadowColor = rgbCss(accent, 1);
-      ctx.shadowBlur = 8 * Math.min(unit, 3);
-      ctx.fillStyle = rgbCss(mixRgb(accent, [255, 255, 255], 0.5));
-      roundRectPath(ctx, -eyeGap - eyeW, vy - eyeH / 2, eyeW, eyeH, size * 0.03);
+      const gap = size * 0.055;
+      roundRectPath(ctx, -gap - eyeW, vy - eyeH / 2, eyeW, eyeH, size * 0.03);
       ctx.fill();
-      roundRectPath(ctx, eyeGap, vy - eyeH / 2, eyeW, eyeH, size * 0.03);
+      roundRectPath(ctx, gap, vy - eyeH / 2, eyeW, eyeH, size * 0.03);
       ctx.fill();
-      ctx.shadowBlur = 0;
-
-      // Pequeños remaches en las esquinas.
-      ctx.fillStyle = rgbCss(accent, 0.42);
-      const rr = size * 0.035;
-      const off = size * 0.33;
-      for (const sx of [-1, 1]) {
-        for (const sy of [-1, 1]) {
-          ctx.beginPath();
-          ctx.arc(sx * off, sy * off, rr, 0, TAU);
-          ctx.fill();
-        }
-      }
 
       ctx.restore();
     }

@@ -27,7 +27,8 @@
 
   const state = {
     section: 0,
-    project: 0,
+    project: { juegos: 0, creaciones: 0 },
+    video: 0,
     skill: 0,
     transitioning: false,
     curtain: false,
@@ -40,6 +41,8 @@
   const els = {};
   let screens = [];
   let modalVideo = null;
+  const carousels = {};
+  const videoPlayers = {};
 
   /* ── Utilidades ────────────────────────────────────────────────────── */
   function initials(name) {
@@ -172,6 +175,20 @@
   }
 
   /* ── HUD / barra de progreso ───────────────────────────────────────── */
+  function sectionIndexFor(requested) {
+    const aliases = {
+      proyectos: 'juegos',
+      niveles: 'juegos',
+      skills: 'sobre-mi',
+      stats: 'sobre-mi',
+      icon: 'sobre-mi',
+    };
+    const id = aliases[requested] || requested;
+    return DATA.sections.findIndex(
+      (section) => section.id === id || String(section.progress) === id
+    );
+  }
+
   function renderLevelNodes() {
     els.nodes.innerHTML = DATA.sections.map((section, index) => `
       <button class="node" type="button" data-goto="${index}" style="left:${section.progress}%" aria-label="${escapeText(section.label)}, ${section.progress}%">
@@ -249,6 +266,7 @@
     const direction = index > state.section ? 1 : -1;
     const currentScreen = screens[state.section];
     const nextScreen = screens[index];
+    const fromIndex = state.section;
 
     state.section = index;
     setHud(index, false);
@@ -262,7 +280,8 @@
 
     const dashMs = scene ? scene.setSection(index) : 0;
     sound.play('dash');
-    if (index !== 1) pauseProjectVideos();
+    pauseProjectVideos();
+    if (fromIndex === 0) pauseHomeVideos();
 
     currentScreen.classList.add(direction > 0 ? 'screen--out-left' : 'screen--out-right');
 
@@ -273,8 +292,8 @@
       nextScreen.hidden = false;
       els.main.scrollTop = 0;
       nextScreen.classList.add(direction > 0 ? 'screen--in-right' : 'screen--in-left');
-      if (index === 1) syncProjectVideos();
-      else pauseProjectVideos();
+      if (index === 0) playHomeVideo();
+      if (index === 1 || index === 2) syncProjectVideos();
 
       window.setTimeout(() => {
         nextScreen.classList.remove('screen--in-left', 'screen--in-right');
@@ -288,29 +307,56 @@
     els.live.textContent = `Sección ${section.label}, ${section.progress} por ciento del nivel.`;
   }
 
-  /* ── Proyectos ─────────────────────────────────────────────────────── */
+  /* ── Proyectos: carruseles por sección ─────────────────────────────── */
   function renderProjects() {
-    els.track.innerHTML = DATA.projects.map((project, index) => projectCard(project, index)).join('');
-    els.dots.innerHTML = DATA.projects.map((project, index) => `
-      <button class="levels__dot" type="button" data-project-dot="${index}" aria-label="Ir al proyecto ${index + 1}: ${escapeText(project.name)}" aria-pressed="false"></button>`).join('');
+    $$('.carousel').forEach((container) => {
+      const group = container.dataset.carousel;
+      const list = DATA.projects.filter((project) => project.group === group);
 
-    els.track.addEventListener('click', (event) => {
-      const button = event.target.closest('[data-project]');
-      if (!button) return;
-      openProject(Number(button.dataset.project));
+      if (!list.length) {
+        container.innerHTML = '<p class="carousel__empty">Próximamente.</p>';
+        return;
+      }
+
+      container.innerHTML = `
+        <div class="levels">
+          <button class="levels__arrow" type="button" data-carousel-arrow="prev" aria-label="Proyecto anterior">‹</button>
+          <div class="levels__viewport" tabindex="0" role="group" aria-roledescription="carrusel" aria-label="Selector de proyectos">
+            <div class="levels__track">${list.map((project, index) => projectCard(project, index)).join('')}</div>
+          </div>
+          <button class="levels__arrow" type="button" data-carousel-arrow="next" aria-label="Proyecto siguiente">›</button>
+        </div>
+        <div class="levels__foot">
+          <div class="levels__dots">${list.map((project, index) => `
+            <button class="levels__dot" type="button" data-carousel-dot="${index}" aria-label="Ir al proyecto ${index + 1}: ${escapeText(project.name)}" aria-pressed="false"></button>`).join('')}
+          </div>
+          <p class="levels__count">1 / ${list.length}</p>
+          <p class="levels__hint"><kbd>A</kbd><kbd>D</kbd> o <kbd>↑</kbd><kbd>↓</kbd> cambian de proyecto</p>
+        </div>`;
+
+      const track = $('.levels__track', container);
+      const viewport = $('.levels__viewport', container);
+      carousels[group] = { container, list, track, viewport };
+
+      container.addEventListener('click', (event) => {
+        const dot = event.target.closest('[data-carousel-dot]');
+        if (dot) {
+          goProject(group, Number(dot.dataset.carouselDot));
+          return;
+        }
+        const arrow = event.target.closest('[data-carousel-arrow]');
+        if (arrow) {
+          const step = arrow.dataset.carouselArrow === 'next' ? 1 : -1;
+          goProject(group, state.project[group] + step);
+          return;
+        }
+        const button = event.target.closest('[data-project]');
+        if (button) openProject(group, Number(button.dataset.project));
+      });
+
+      setupSwipe(viewport, (step) => goProject(group, state.project[group] + step));
+      updateProject(group, 0, true);
     });
-
-    els.dots.addEventListener('click', (event) => {
-      const dot = event.target.closest('[data-project-dot]');
-      if (!dot) return;
-      goProject(Number(dot.dataset.projectDot));
-    });
-
-    els.levelPrev.addEventListener('click', () => goProject(state.project - 1));
-    els.levelNext.addEventListener('click', () => goProject(state.project + 1));
-
-    setupSwipe();
-    updateProject(0, true);
   }
 
   function projectCard(project, index) {
@@ -369,26 +415,29 @@
     </div>`;
   }
 
-  function goProject(index, silent) {
+  function goProject(group, index, silent) {
     if (state.curtain) return;
-    const total = DATA.projects.length;
+    const carousel = carousels[group];
+    if (!carousel) return;
+    const total = carousel.list.length;
     const target = ((index % total) + total) % total;
-    if (target === state.project) return;
+    if (target === state.project[group]) return;
 
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduced) {
-      state.project = target;
-      updateProject(target, silent);
+      state.project[group] = target;
+      updateProject(group, target, silent);
       if (!silent) sound.play('click');
       return;
     }
 
-    playCurtain(target, silent);
+    playCurtain(group, target, silent);
   }
 
   /* Cierre de telón → cambio de proyecto → apertura. */
-  function playCurtain(index, silent) {
-    const project = DATA.projects[index];
+  function playCurtain(group, index, silent) {
+    const carousel = carousels[group];
+    const project = carousel.list[index];
     if (!project) return;
 
     state.curtain = true;
@@ -406,14 +455,14 @@
     const openMs = 360;
 
     window.setTimeout(() => {
-      state.project = index;
+      state.project[group] = index;
 
       // El carrusel cambia a puerta cerrada, sin deslizar bajo el telón.
-      const previousTransition = els.track.style.transition;
-      els.track.style.transition = 'none';
-      updateProject(index, true);
-      void els.track.offsetWidth;
-      els.track.style.transition = previousTransition;
+      const previousTransition = carousel.track.style.transition;
+      carousel.track.style.transition = 'none';
+      updateProject(group, index, true);
+      void carousel.track.offsetWidth;
+      carousel.track.style.transition = previousTransition;
 
       window.setTimeout(() => {
         els.curtain.classList.remove('is-closed');
@@ -421,80 +470,237 @@
         window.setTimeout(() => {
           els.curtain.classList.remove('is-active');
           state.curtain = false;
-          els.live.textContent = `Proyecto ${index + 1} de ${DATA.projects.length}: ${project.name}.`;
+          els.live.textContent = `Proyecto ${index + 1} de ${carousel.list.length}: ${project.name}.`;
         }, openMs);
       }, holdMs);
     }, closeMs);
   }
 
   function syncProjectVideos() {
-    const videos = $$('video', els.track);
-    videos.forEach((video, index) => {
-      if (index === state.project) {
-        const promise = video.play();
-        if (promise && promise.catch) promise.catch(() => {});
-      } else {
-        video.pause();
-      }
+    const activeGroup = state.section === 1 ? 'juegos' : state.section === 2 ? 'creaciones' : null;
+    Object.keys(carousels).forEach((group) => {
+      $$('video', carousels[group].track).forEach((video, index) => {
+        if (group === activeGroup && index === state.project[group]) {
+          const promise = video.play();
+          if (promise && promise.catch) promise.catch(() => {});
+        } else {
+          video.pause();
+        }
+      });
     });
   }
 
   function pauseProjectVideos() {
-    $$('video', els.track).forEach((video) => video.pause());
+    Object.keys(carousels).forEach((group) => {
+      $$('video', carousels[group].track).forEach((video) => video.pause());
+    });
   }
 
-  function updateProject(index, silent) {
-    const project = DATA.projects[index];
+  function updateProject(group, index, silent) {
+    const carousel = carousels[group];
+    const project = carousel.list[index];
     if (!project) return;
 
-    els.track.style.transform = `translateX(-${index * 100}%)`;
-    $$('.level-card', els.track).forEach((card, i) => {
+    carousel.track.style.transform = `translateX(-${index * 100}%)`;
+    $$('.level-card', carousel.track).forEach((card, i) => {
       card.classList.toggle('is-active', i === index);
     });
-    $$('.levels__dot', els.dots).forEach((dot, i) => {
+    $$('.levels__dot', carousel.container).forEach((dot, i) => {
       dot.classList.toggle('is-active', i === index);
       dot.setAttribute('aria-pressed', String(i === index));
     });
     syncProjectVideos();
 
-    els.levelCount.textContent = `${index + 1} / ${DATA.projects.length}`;
-    els.viewport.setAttribute('aria-label', `Proyecto ${index + 1} de ${DATA.projects.length}: ${project.name}`);
+    $$('.levels__count', carousel.container).forEach((count) => {
+      count.textContent = `${index + 1} / ${carousel.list.length}`;
+    });
+    carousel.viewport.setAttribute('aria-label', `Proyecto ${index + 1} de ${carousel.list.length}: ${project.name}`);
     if (!silent) {
-      els.live.textContent = `Proyecto ${index + 1} de ${DATA.projects.length}: ${project.name}.`;
+      els.live.textContent = `Proyecto ${index + 1} de ${carousel.list.length}: ${project.name}.`;
     }
   }
 
-  function setupSwipe() {
+  function setupSwipe(viewport, onSwipe) {
     let startX = 0;
     let startY = 0;
     let tracking = false;
 
-    els.viewport.addEventListener('pointerdown', (event) => {
+    viewport.addEventListener('pointerdown', (event) => {
       if (event.pointerType === 'mouse' && event.button !== 0) return;
       startX = event.clientX;
       startY = event.clientY;
       tracking = true;
     });
 
-    els.viewport.addEventListener('pointerup', (event) => {
+    viewport.addEventListener('pointerup', (event) => {
       if (!tracking) return;
       tracking = false;
       const dx = event.clientX - startX;
       const dy = event.clientY - startY;
       if (Math.abs(dx) > 44 && Math.abs(dx) > Math.abs(dy) * 1.2) {
-        goProject(state.project + (dx < 0 ? 1 : -1));
+        onSwipe(dx < 0 ? 1 : -1);
       }
     });
 
-    els.viewport.addEventListener('pointercancel', () => {
+    viewport.addEventListener('pointercancel', () => {
       tracking = false;
     });
   }
 
+  /* ── Vídeos del inicio ─────────────────────────────────────────────── */
+  function renderVideos() {
+    const list = DATA.videos || [];
+    if (!list.length || !els.videoTrack) return;
+
+    els.videoTrack.innerHTML = list.map((video, index) => videoSlide(video, index)).join('');
+    els.videoDots.innerHTML = list.map((video, index) => `
+      <button class="video-carousel__dot" type="button" data-video-dot="${index}" aria-label="Ir al vídeo ${index + 1}: ${escapeText(video.title)}" aria-pressed="false"></button>`).join('');
+
+    $$('.video-slide video', els.videoTrack).forEach((video, index) => {
+      video.addEventListener('ended', () => goVideo(index + 1, true));
+    });
+
+    els.videoPrev.addEventListener('click', () => goVideo(state.video - 1));
+    els.videoNext.addEventListener('click', () => goVideo(state.video + 1));
+    els.videoDots.addEventListener('click', (event) => {
+      const dot = event.target.closest('[data-video-dot]');
+      if (dot) goVideo(Number(dot.dataset.videoDot));
+    });
+    setupSwipe(els.videoStage, (step) => goVideo(state.video + step));
+
+    loadYouTubeApi();
+    updateVideo(0, true);
+    playHomeVideo();
+  }
+
+  function videoSlide(video, index) {
+    const badge = `<span class="video-slide__badge">${escapeText(video.title)}</span>`;
+
+    if (video.type === 'file' && video.src) {
+      return `<div class="video-slide">
+        <video class="video-slide__media" muted autoplay playsinline preload="metadata" ${video.poster ? `poster="${video.poster}"` : ''}>
+          <source src="${video.src}" type="video/mp4">
+        </video>
+        ${badge}
+      </div>`;
+    }
+
+    if (video.type === 'youtube' && video.youtubeId) {
+      return `<div class="video-slide">
+        <div class="video-slide__yt" data-yt="${index}" data-yt-id="${escapeText(video.youtubeId)}"></div>
+        ${badge}
+      </div>`;
+    }
+
+    return `<div class="video-slide video-slide--empty">
+      <div class="video-slide__ph">
+        <b aria-hidden="true">▶</b>
+        <span>${escapeText(video.title)}</span>
+        <small>Edita la lista de vídeos en js/data.js</small>
+      </div>
+    </div>`;
+  }
+
+  function goVideo(index, silent) {
+    const list = DATA.videos || [];
+    if (!list.length) return;
+    const total = list.length;
+    const target = ((index % total) + total) % total;
+    if (target === state.video) return;
+    state.video = target;
+    updateVideo(target, silent);
+    if (!silent) sound.play('click');
+  }
+
+  function updateVideo(index, silent) {
+    const list = DATA.videos || [];
+    if (!list.length) return;
+
+    els.videoTrack.style.transform = `translateX(-${index * 100}%)`;
+    $$('.video-carousel__dot', els.videoDots).forEach((dot, i) => {
+      dot.classList.toggle('is-active', i === index);
+      dot.setAttribute('aria-pressed', String(i === index));
+    });
+    els.videoCount.textContent = `${index + 1} / ${list.length}`;
+    if (!silent) {
+      els.live.textContent = `Vídeo ${index + 1} de ${list.length}: ${list[index].title}.`;
+    }
+
+    const active = state.section === 0;
+    $$('.video-slide video', els.videoTrack).forEach((video, i) => {
+      if (i === index && active) {
+        const promise = video.play();
+        if (promise && promise.catch) promise.catch(() => {});
+      } else {
+        video.pause();
+      }
+    });
+    Object.keys(videoPlayers).forEach((key) => {
+      const player = videoPlayers[key];
+      if (Number(key) === index && active) player.playVideo();
+      else player.pauseVideo();
+    });
+  }
+
+  function playHomeVideo() {
+    updateVideo(state.video, true);
+  }
+
+  function pauseHomeVideos() {
+    $$('.video-slide video', els.videoTrack).forEach((video) => video.pause());
+    Object.keys(videoPlayers).forEach((key) => videoPlayers[key].pauseVideo());
+  }
+
+  function loadYouTubeApi() {
+    const hasYouTube = (DATA.videos || []).some((video) => video.type === 'youtube' && video.youtubeId);
+    if (!hasYouTube) return;
+
+    if (window.YT && window.YT.Player) {
+      createYouTubePlayers();
+      return;
+    }
+
+    window.onYouTubeIframeAPIReady = () => {
+      createYouTubePlayers();
+    };
+
+    if (!document.getElementById('yt-iframe-api')) {
+      const script = document.createElement('script');
+      script.id = 'yt-iframe-api';
+      script.src = 'https://www.youtube.com/iframe_api';
+      document.head.appendChild(script);
+    }
+  }
+
+  function createYouTubePlayers() {
+    if (!window.YT || !window.YT.Player) return;
+    $$('.video-slide__yt', els.videoTrack).forEach((holder) => {
+      const index = Number(holder.dataset.yt);
+      if (videoPlayers[index]) return;
+      videoPlayers[index] = new window.YT.Player(holder, {
+        videoId: holder.dataset.ytId,
+        playerVars: {
+          autoplay: index === state.video ? 1 : 0,
+          mute: 1,
+          playsinline: 1,
+          rel: 0,
+          controls: 1,
+        },
+        events: {
+          onStateChange: (event) => {
+            if (event.data === window.YT.PlayerState.ENDED) goVideo(index + 1, true);
+          },
+        },
+      });
+    });
+  }
+
   /* ── Modal de proyecto ─────────────────────────────────────────────── */
-  function openProject(index) {
+  function openProject(group, index) {
     if (state.curtain) return;
-    const project = DATA.projects[index];
+    const carousel = carousels[group];
+    if (!carousel) return;
+    const project = carousel.list[index];
     if (!project) return;
 
     state.modalProject = project;
@@ -786,7 +992,8 @@
         modalVideo.currentTime = 0;
         modalVideo = null;
       }
-      if (state.section === 1) syncProjectVideos();
+      if (state.section === 1 || state.section === 2) syncProjectVideos();
+      else if (state.section === 0) playHomeVideo();
       sound.play('close');
     });
 
@@ -805,12 +1012,10 @@
     // Aterrizaje: pequeño golpe sintetizado.
     window.addEventListener('gd:land', () => sound.play('land'));
 
-    // Cambios manuales del hash (#proyectos, #skills…) en la barra del navegador.
+    // Cambios manuales del hash (#juegos, #creaciones…) en la barra del navegador.
     window.addEventListener('hashchange', () => {
       const requested = window.location.hash.replace('#', '').toLowerCase();
-      const index = DATA.sections.findIndex(
-        (section) => section.id === requested || String(section.progress) === requested
-      );
+      const index = sectionIndexFor(requested);
       if (index >= 0 && index !== state.section) goSection(index);
     });
 
@@ -832,14 +1037,15 @@
         return;
       }
 
-      if (state.section === 1) {
+      if (state.section === 1 || state.section === 2) {
+        const group = state.section === 1 ? 'juegos' : 'creaciones';
         const key = event.key.toLowerCase();
         if (key === 'a' || key === 'arrowup') {
           event.preventDefault();
-          goProject(state.project - 1);
+          goProject(group, state.project[group] - 1);
         } else if (key === 'd' || key === 'arrowdown') {
           event.preventDefault();
-          goProject(state.project + 1);
+          goProject(group, state.project[group] + 1);
         }
       }
     });
@@ -866,12 +1072,12 @@
       els.soundToggle = $('#sound-toggle');
       els.avatar = $('#avatar-img');
       els.statsGrid = $('#stats-grid');
-      els.track = $('#levels-track');
-      els.viewport = $('#levels-viewport');
-      els.dots = $('#levels-dots');
-      els.levelCount = $('#levels-count');
-      els.levelPrev = $('#level-prev');
-      els.levelNext = $('#level-next');
+      els.videoTrack = $('#video-track');
+      els.videoStage = $('#video-stage');
+      els.videoDots = $('#video-dots');
+      els.videoCount = $('#video-count');
+      els.videoPrev = $('#video-prev');
+      els.videoNext = $('#video-next');
       els.skillsGrid = $('#skills-grid');
       els.skillPanel = $('#skill-panel');
       els.skillName = $('#skill-name');
@@ -900,6 +1106,7 @@
 
       renderProfile();
       renderLevelNodes();
+      renderVideos();
       renderProjects();
       renderSkills();
       renderContact();
@@ -914,14 +1121,12 @@
       els.soundToggle.title = 'Activar sonido';
       els.live.textContent = 'Portafolio cargado. Sección Inicio, 0 por ciento.';
 
-      // Enlaces profundos: #proyectos, #skills, #stats o ?seccion=proyectos.
+      // Enlaces profundos: #juegos, #creaciones, #sobre-mi o ?seccion=creaciones.
       const requested = (
         new URLSearchParams(window.location.search).get('seccion') ||
         window.location.hash.replace('#', '')
       ).toLowerCase();
-      const targetIndex = DATA.sections.findIndex(
-        (section) => section.id === requested || String(section.progress) === requested
-      );
+      const targetIndex = sectionIndexFor(requested);
       if (targetIndex > 0) {
         window.setTimeout(() => goSection(targetIndex), 90);
       }
