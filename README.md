@@ -175,9 +175,8 @@ También vale `python -m http.server 8770`.
   y ondas de choque, y se encoge en el nuevo checkpoint. La sección entra mientras el cubo pasa,
   así que el cambio queda enmascarado por el dash.
 - **Telón de proyecto:** el carrusel de Niveles se cambia con un telón CSS de terciopelo rojo,
-  guirnalda dorada y flecos. Cierra en 1 s, cambia la tarjeta y el repo detrás del telón, y abre
-  en 1,75 s comprimiendo la tela con `scaleX(0.2)` + `skewY` para simular que se frunce y se
-  recoge. El sello central muestra el número de nivel y el proyecto nuevo.
+  guirnalda dorada y flecos. Cierra en 330 ms, cambia la tarjeta y el repo detrás del telón, y
+  abre en 360 ms. El sello central muestra el número de nivel y el proyecto nuevo.
 - **Color triggers:** paletas RGB interpoladas por frame con un factor exponencial; la UI cambia
   con variables CSS.
 - **Audio:** osciladores, envolventes y ruido generado en `AudioContext`. No hay archivos ni

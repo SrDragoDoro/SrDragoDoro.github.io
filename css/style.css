@@ -2212,8 +2212,6 @@ kbd {
   overflow: hidden;
   visibility: hidden;
   pointer-events: none;
-  perspective: 1200px;
-  perspective-origin: 50% 38%;
 }
 
 .curtain.is-active {
@@ -2228,30 +2226,20 @@ kbd {
   z-index: 1;
   width: 51%;
   background:
-    radial-gradient(ellipse at 55% -10%, rgba(255, 196, 140, 0.24), transparent 56%),
+    radial-gradient(ellipse at 50% -8%, rgba(255, 196, 140, 0.2), transparent 58%),
     repeating-linear-gradient(
       90deg,
-      rgba(0, 0, 0, 0.36) 0px,
-      rgba(0, 0, 0, 0.04) 12px,
-      rgba(255, 255, 255, 0.09) 28px,
-      rgba(0, 0, 0, 0.2) 44px,
-      rgba(0, 0, 0, 0.41) 62px
-    ),
-    repeating-linear-gradient(
-      90deg,
-      transparent 0px,
-      transparent 128px,
-      rgba(255, 208, 150, 0.06) 158px,
-      transparent 196px
+      rgba(0, 0, 0, 0.34) 0px,
+      rgba(0, 0, 0, 0.04) 15px,
+      rgba(255, 255, 255, 0.08) 31px,
+      rgba(0, 0, 0, 0.2) 47px,
+      rgba(0, 0, 0, 0.4) 63px
     ),
     linear-gradient(180deg, #a3121d 0%, #7c0a14 46%, #4a040b 100%);
-  background-size: auto, 64px 100%, 220px 100%, auto;
+  background-size: auto, 64px 100%, auto;
   box-shadow: inset 0 -90px 130px rgba(0, 0, 0, 0.5);
-  transform-origin: top center;
-  transform: translateX(-85%) scaleX(0.2) skewY(3deg);
-  transition: transform 1.75s cubic-bezier(0.25, 1, 0.5, 1);
+  transition: transform 0.34s cubic-bezier(0.7, 0, 0.22, 1);
   will-change: transform;
-  backface-visibility: hidden;
 }
 
 .curtain__panel--left {
@@ -2260,6 +2248,7 @@ kbd {
   box-shadow:
     inset -60px 0 80px rgba(0, 0, 0, 0.55),
     6px 0 24px rgba(0, 0, 0, 0.45);
+  transform: translateX(-101%);
 }
 
 .curtain__panel--right {
@@ -2268,26 +2257,12 @@ kbd {
   box-shadow:
     inset 60px 0 80px rgba(0, 0, 0, 0.55),
     -6px 0 24px rgba(0, 0, 0, 0.45);
-  transform: translateX(85%) scaleX(0.2) skewY(-3deg);
+  transform: translateX(101%);
 }
 
-.curtain.is-closed .curtain__panel {
-  transform: translateX(0) scaleX(1) skewY(0deg);
-  transition-duration: 1s;
-  transition-timing-function: cubic-bezier(0.6, 0, 0.3, 1);
-}
-
-/* Borde inferior pesado: el bajo de la tela. */
-.curtain__panel::before {
-  content: '';
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  height: 22px;
-  border-top: 1px solid rgba(232, 182, 71, 0.25);
-  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.55) 46%, rgba(0, 0, 0, 0.78));
-  pointer-events: none;
+.curtain.is-closed .curtain__panel--left,
+.curtain.is-closed .curtain__panel--right {
+  transform: translateX(0);
 }
 
 /* Brillo de terciopelo cerca del borde interior. */
@@ -2325,10 +2300,10 @@ kbd {
     linear-gradient(180deg, #ad131f, #5a060e);
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.62);
   transform: translateY(-125%);
-  transition: transform 0.95s cubic-bezier(0.6, 0, 0.3, 1);
+  transition: transform 0.3s cubic-bezier(0.7, 0, 0.22, 1);
 }
 
-.curtain.is-closed .curtain__valance {
+.curtain.is-active .curtain__valance {
   transform: translateY(0);
 }
 
@@ -2368,15 +2343,12 @@ kbd {
     inset 0 1px 0 rgba(255, 255, 255, 0.22);
   opacity: 0;
   transform: translate(-50%, -50%) scale(0.88);
-  transition: opacity 0.2s ease, transform 0.24s var(--ease-out);
+  transition: opacity 0.18s ease, transform 0.26s var(--ease-out);
 }
 
 .curtain.is-closed .curtain__seal {
   opacity: 1;
   transform: translate(-50%, -50%) scale(1);
-  transition:
-    opacity 0.25s ease 0.72s,
-    transform 0.3s var(--ease-out) 0.7s;
 }
 
 .curtain__seal-mark {

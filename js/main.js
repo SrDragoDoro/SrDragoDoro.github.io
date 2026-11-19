@@ -401,9 +401,9 @@
     els.curtain.classList.add('is-closed');
     if (!silent) sound.play('curtain');
 
-    const closeMs = 1000;
-    const holdMs = 350;
-    const openMs = 1750;
+    const closeMs = 330;
+    const holdMs = 100;
+    const openMs = 360;
 
     window.setTimeout(() => {
       state.project = index;
