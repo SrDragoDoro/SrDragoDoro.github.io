@@ -215,7 +215,7 @@
     cancelAnimationFrame(state.readoutFrame);
 
     const step = (now) => {
-      const t = Math.min(1, (now - start) / duration);
+      const t = Math.min(1, Math.max(0, (now - start) / duration));
       const eased = 1 - Math.pow(1 - t, 3);
       const value = Math.round(from + (target - from) * eased);
       state.readout = value;
@@ -258,8 +258,8 @@
       // file:// u otros contextos sin History API: la navegación sigue igual.
     }
 
-    if (scene) scene.setSection(index);
-    sound.play('section');
+    const dashMs = scene ? scene.setSection(index) : 0;
+    sound.play('dash');
     if (index !== 1) pauseProjectVideos();
 
     currentScreen.classList.add(direction > 0 ? 'screen--out-left' : 'screen--out-right');
@@ -276,12 +276,12 @@
 
       window.setTimeout(() => {
         nextScreen.classList.remove('screen--in-left', 'screen--in-right');
-      }, 360);
-    }, 145);
+      }, 460);
+    }, 200);
 
     window.setTimeout(() => {
       state.transitioning = false;
-    }, 470);
+    }, Math.max(690, dashMs + 70));
 
     els.live.textContent = `Sección ${section.label}, ${section.progress} por ciento del nivel.`;
   }

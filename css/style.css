@@ -114,6 +114,17 @@ button {
   pointer-events: none;
 }
 
+/* El cubo gigante del dash pasa por encima del contenido pero bajo el HUD. */
+#dash-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
 .skip {
   position: fixed;
   top: -100px;
@@ -190,20 +201,20 @@ button {
 }
 
 .screen--in-right {
-  animation: screen-in-right 0.32s var(--ease-out) both;
+  animation: screen-in-right 0.42s var(--ease-out) both;
 }
 
 .screen--in-left {
-  animation: screen-in-left 0.32s var(--ease-out) both;
+  animation: screen-in-left 0.42s var(--ease-out) both;
 }
 
 .screen--out-left {
-  animation: screen-out-left 0.16s ease-in both;
+  animation: screen-out-left 0.2s ease-in both;
   pointer-events: none;
 }
 
 .screen--out-right {
-  animation: screen-out-right 0.16s ease-in both;
+  animation: screen-out-right 0.2s ease-in both;
   pointer-events: none;
 }
 

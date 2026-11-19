@@ -6,6 +6,8 @@
  * · Paletas que se interpolan (lerp) al cambiar de sección.
  * · Cubo con salto parabólico, rotación de 180°/360°, squash & stretch,
  *   estela de partículas e impacto al aterrizar.
+ * · Dash gigante al cambiar de sección: el cubo crece, gira 720°, cruza la
+ *   pantalla y aterriza en el nuevo checkpoint.
  * · Skin del cubo editable en tiempo real desde el Icon Kit.
  * ========================================================================== */
 
@@ -13,6 +15,7 @@
   'use strict';
 
   const TAU = Math.PI * 2;
+  const DASH_DURATION = 0.62;
   const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
   const lerp = (a, b, t) => a + (b - a) * t;
   const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
@@ -78,9 +81,11 @@
   };
 
   class GDWorld {
-    constructor(canvas, sections) {
+    constructor(canvas, sections, dashCanvas) {
       this.canvas = canvas;
       this.ctx = canvas.getContext('2d');
+      this.dashCanvas = dashCanvas || null;
+      this.dashCtx = this.dashCanvas ? this.dashCanvas.getContext('2d') : null;
       this.sections = sections || [];
 
       this.w = 0;
@@ -128,6 +133,7 @@
       this.particles = [];
       this.rings = [];
       this.shapes = [];
+      this.dash = null;
 
       this.reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       if (window.matchMedia) {
@@ -174,6 +180,14 @@
       this.canvas.style.height = this.h + 'px';
       this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
 
+      if (this.dashCanvas && this.dashCtx) {
+        this.dashCanvas.width = Math.round(this.w * this.dpr);
+        this.dashCanvas.height = Math.round(this.h * this.dpr);
+        this.dashCanvas.style.width = this.w + 'px';
+        this.dashCanvas.style.height = this.h + 'px';
+        this.dashCtx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      }
+
       const mobile = this.w <= 820;
       this.groundH = mobile
         ? clamp(this.h * 0.14, 92, 140)
@@ -182,6 +196,7 @@
 
       this.size = clamp(this.w * 0.052, 46, 76);
       this.x = this.anchorFor(this.progress);
+      if (this.dash && oldW && this.w !== oldW) this.dash = null;
 
       if (oldW && this.shapes.length) this.buildShapes();
     }
@@ -213,7 +228,7 @@
 
     /* ── API pública ───────────────────────────────────────────────────── */
     setSection(index, instant) {
-      if (!this.sections[index]) return;
+      if (!this.sections[index]) return 0;
       this.section = index;
       this.progress = this.sections[index].progress;
       this.targetPalette = normalizePalette(this.sections[index].palette);
@@ -223,13 +238,23 @@
         this.x = this.anchorFor(this.progress);
         this.prevX = this.x;
         this.paletteSnap = true;
-        return;
+        this.dash = null;
+        return 0;
       }
 
+      const targetX = this.anchorFor(this.progress);
+      const direction = targetX >= this.x ? 1 : -1;
+
       this.jumpTo(this.progress, {
-        duration: 0.45,
+        duration: this.reduced ? 0.45 : DASH_DURATION - 0.03,
         spin: this.w < 480 ? 180 : 360,
       });
+
+      if (!this.reduced) {
+        this.startDash(targetX, direction);
+        return DASH_DURATION * 1000;
+      }
+      return 0;
     }
 
     jump() {
@@ -326,6 +351,68 @@
       }
     }
 
+    /* ── Dash gigante de transición ────────────────────────────────────── */
+    startDash(targetX, direction) {
+      this.dash = {
+        t: 0,
+        dur: DASH_DURATION,
+        fromX: this.x,
+        toX: targetX,
+        fromY: this.groundY - this.jumpOffset - this.size * 0.5,
+        toY: this.groundY - this.size * 0.5,
+        arc: clamp(this.h * 0.34, 150, 310),
+        spin: direction * TAU * 2,
+        startAngle: this.angle,
+        giant: Math.max(this.size * 3.2, Math.min(this.w * 0.42, this.h * 0.5, 380)),
+        direction,
+        trail: [],
+        trailTimer: 0,
+        seed: Math.random() * 1000,
+      };
+
+      if (!this.reduced) {
+        const y = this.groundY - this.jumpOffset - this.size * 0.5;
+        for (let i = 0; i < 22; i++) {
+          const a = Math.random() * TAU;
+          this.particles.push({
+            x: this.x,
+            y,
+            vx: Math.cos(a) * (80 + Math.random() * 240),
+            vy: Math.sin(a) * (80 + Math.random() * 200) - 40,
+            g: 460,
+            life: 0.35 + Math.random() * 0.5,
+            max: 0.85,
+            size: 3 + Math.random() * 6,
+            rot: Math.random() * TAU,
+            vr: (Math.random() - 0.5) * 12,
+            color: Math.random() > 0.35 ? this.palette.accent : this.skinAccent,
+          });
+        }
+      }
+    }
+
+    dashPose(t) {
+      const d = this.dash;
+      if (!d) return { x: 0, y: 0, size: 0, angle: 0, alpha: 1 };
+      const p = clamp(t, 0, 1);
+
+      let size;
+      if (p < 0.22) {
+        size = lerp(this.size, d.giant, easeOutCubic(p / 0.22));
+      } else if (p < 0.58) {
+        size = d.giant * (1 + 0.035 * Math.sin(((p - 0.22) / 0.36) * Math.PI));
+      } else {
+        size = lerp(d.giant, this.size, smoothstep((p - 0.58) / 0.42));
+      }
+
+      const x = lerp(d.fromX, d.toX, smoothstep(p));
+      const y = lerp(d.fromY, d.toY, p) - Math.sin(Math.PI * p) * d.arc;
+      const angle = d.startAngle + d.spin * easeOutCubic(p);
+      const alpha = 1 - smoothstep(clamp((p - 0.92) / 0.08, 0, 1));
+
+      return { x, y, size, angle, alpha };
+    }
+
     /* ── Bucle principal ───────────────────────────────────────────────── */
     loop(now) {
       if (!this.last) this.last = now;
@@ -354,6 +441,18 @@
       const sk = 1 - Math.exp(-dt * 7);
       this.skinBase = mixRgb(this.skinBase, this.skinTargetBase, sk);
       this.skinAccent = mixRgb(this.skinAccent, this.skinTargetAccent, sk);
+
+      // Dash gigante: avanza, guarda estelas y termina solo.
+      if (this.dash) {
+        this.dash.t += dt;
+        this.dash.trailTimer -= dt;
+        if (this.dash.trailTimer <= 0) {
+          this.dash.trailTimer = 0.022;
+          this.dash.trail.unshift(this.dashPose(this.dash.t / this.dash.dur));
+          if (this.dash.trail.length > 7) this.dash.trail.pop();
+        }
+        if (this.dash.t >= this.dash.dur) this.dash = null;
+      }
 
       if (this.airborne) {
         this.jumpElapsed += dt;
@@ -501,10 +600,16 @@
       this.drawShapes(ctx);
       this.drawGrid(ctx);
       this.drawGround(ctx);
-      this.drawShadow(ctx);
+
+      // Durante el dash el cubo pequeño desaparece: lo sustituye el gigante.
+      if (!this.dash) {
+        this.drawShadow(ctx);
+        this.drawCube(ctx);
+      }
+
       this.drawParticles(ctx);
-      this.drawCube(ctx);
       this.drawRings(ctx);
+      this.drawDash();
     }
 
     drawSky(ctx) {
@@ -732,48 +837,144 @@
       }
     }
 
+    /* El dash vive en un canvas por encima del contenido y debajo del HUD. */
+    drawDash() {
+      const ctx = this.dashCtx;
+      if (!ctx) return;
+
+      ctx.clearRect(0, 0, this.w, this.h);
+      if (!this.dash) return;
+
+      const d = this.dash;
+      const t = clamp(d.t / d.dur, 0, 1);
+      const pose = this.dashPose(t);
+      const accent = this.palette.accent;
+      const alpha = pose.alpha;
+      const dir = d.direction;
+
+      // Resplandor radial alrededor del cubo.
+      const glow = ctx.createRadialGradient(
+        pose.x, pose.y, 0,
+        pose.x, pose.y, pose.size * 1.9
+      );
+      glow.addColorStop(0, rgbCss(accent, 0.26 * alpha));
+      glow.addColorStop(0.5, rgbCss(accent, 0.07 * alpha));
+      glow.addColorStop(1, rgbCss(accent, 0));
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, this.w, this.h);
+
+      // Líneas de velocidad detrás del cubo.
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      for (let i = 0; i < 22; i++) {
+        const n = Math.abs(Math.sin(d.seed + i * 12.9898) * 43758.5453) % 1;
+        const y = pose.y + (n - 0.5) * pose.size * 1.8;
+        const length = pose.size * (0.24 + n * 0.7);
+        const startX = pose.x - dir * (pose.size * 0.58 + 14 + n * 90);
+        const white = n > 0.72;
+        ctx.strokeStyle = white
+          ? `rgba(255, 255, 255, ${0.06 + (1 - n) * 0.16})`
+          : rgbCss(accent, 0.1 + (1 - n) * 0.26);
+        ctx.lineWidth = 1.5 + (1 - n) * 4;
+        ctx.beginPath();
+        ctx.moveTo(startX, y);
+        ctx.lineTo(startX - dir * length, y);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // Ondas de choque.
+      ctx.save();
+      for (let k = 0; k < 2; k++) {
+        const local = (t - 0.14 - k * 0.16) / 0.56;
+        if (local <= 0 || local >= 1) continue;
+        const radius = pose.size * 0.38 + local * this.w * 0.46;
+        ctx.strokeStyle = rgbCss(accent, (1 - local) * 0.2 * alpha);
+        ctx.lineWidth = 2 + (1 - local) * 4;
+        ctx.beginPath();
+        ctx.ellipse(pose.x, pose.y, radius, radius * 0.62, 0, 0, TAU);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // Estelas fantasma.
+      for (let i = d.trail.length - 1; i >= 0; i--) {
+        const ghost = d.trail[i];
+        const ghostAlpha = alpha * (1 - i / d.trail.length) * 0.13;
+        if (ghostAlpha <= 0.005) continue;
+        ctx.save();
+        ctx.globalAlpha = ghostAlpha;
+        ctx.translate(ghost.x, ghost.y);
+        ctx.rotate(ghost.angle);
+        ctx.fillStyle = rgbCss(this.skinAccent, 0.9);
+        roundRectPath(ctx, -ghost.size / 2, -ghost.size / 2, ghost.size, ghost.size, ghost.size * 0.16);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // Cubo gigante con la skin equipada.
+      if (alpha > 0.001) {
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.translate(pose.x, pose.y);
+        ctx.rotate(pose.angle);
+        this.paintCube(ctx, pose.size, this.skinBase, this.skinAccent, this.skinPattern);
+        ctx.restore();
+      }
+    }
+
     drawCube(ctx) {
       const size = this.size;
       const base = this.groundY - this.jumpOffset;
-      const p = this.palette;
 
       ctx.save();
       ctx.translate(this.x, base);
       ctx.scale(this.squashX, this.squashY);
       ctx.translate(0, -size / 2);
       ctx.rotate(this.angle);
+      this.paintCube(ctx, size, this.skinBase, this.skinAccent, this.skinPattern);
+      ctx.restore();
+    }
+
+    /* Dibuja el cubo centrado en (0, 0). Se reutiliza para el cubo normal y
+     * para el cubo gigante del dash, con cualquier tamaño y skin. */
+    paintCube(ctx, size, bodyBase, accent, pattern) {
+      const unit = size / 64;
+      const radius = size * 0.16;
+
+      ctx.save();
 
       // Halo.
-      ctx.shadowColor = rgbCss(this.skinAccent, 0.62);
-      ctx.shadowBlur = 20 + Math.sin(this.time * 3) * 3;
+      ctx.shadowColor = rgbCss(accent, 0.62);
+      ctx.shadowBlur = Math.min(60, 20 * unit) + Math.sin(this.time * 3) * 3 * Math.min(unit, 2);
 
       // Cuerpo con bisel.
       const body = ctx.createLinearGradient(-size / 2, -size / 2, size / 2, size / 2);
-      body.addColorStop(0, rgbCss(mixRgb(this.skinBase, [255, 255, 255], 0.3)));
-      body.addColorStop(0.46, rgbCss(this.skinBase));
-      body.addColorStop(1, rgbCss(mixRgb(this.skinBase, [0, 0, 0], 0.42)));
+      body.addColorStop(0, rgbCss(mixRgb(bodyBase, [255, 255, 255], 0.3)));
+      body.addColorStop(0.46, rgbCss(bodyBase));
+      body.addColorStop(1, rgbCss(mixRgb(bodyBase, [0, 0, 0], 0.42)));
       ctx.fillStyle = body;
-      roundRectPath(ctx, -size / 2, -size / 2, size, size, size * 0.16);
+      roundRectPath(ctx, -size / 2, -size / 2, size, size, radius);
       ctx.fill();
       ctx.shadowBlur = 0;
 
       // Patrón interior.
       ctx.save();
-      roundRectPath(ctx, -size / 2, -size / 2, size, size, size * 0.16);
+      roundRectPath(ctx, -size / 2, -size / 2, size, size, radius);
       ctx.clip();
-      this.drawPattern(ctx, size);
+      this.drawPattern(ctx, size, bodyBase, accent, pattern);
       ctx.restore();
 
       // Bisel interior.
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 3 * unit;
       ctx.strokeStyle = 'rgba(3, 8, 16, 0.88)';
-      roundRectPath(ctx, -size / 2, -size / 2, size, size, size * 0.16);
+      roundRectPath(ctx, -size / 2, -size / 2, size, size, radius);
       ctx.stroke();
 
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 1.5 * unit;
       const inner = size / 2 - size * 0.075;
       roundRectPath(ctx, -inner, -inner, inner * 2, inner * 2, size * 0.11);
-      ctx.strokeStyle = rgbCss(this.skinAccent, 0.55);
+      ctx.strokeStyle = rgbCss(accent, 0.55);
       ctx.stroke();
 
       // Brillo superior.
@@ -791,16 +992,16 @@
       ctx.fillStyle = 'rgba(2, 8, 14, 0.9)';
       roundRectPath(ctx, -vw / 2, vy - vh / 2, vw, vh, vh * 0.32);
       ctx.fill();
-      ctx.strokeStyle = rgbCss(this.skinAccent, 0.35);
-      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = rgbCss(accent, 0.35);
+      ctx.lineWidth = 1.2 * unit;
       ctx.stroke();
 
       const eyeW = size * 0.135;
       const eyeH = size * 0.145;
       const eyeGap = size * 0.055;
-      ctx.shadowColor = rgbCss(this.skinAccent, 1);
-      ctx.shadowBlur = 8;
-      ctx.fillStyle = rgbCss(mixRgb(this.skinAccent, [255, 255, 255], 0.5));
+      ctx.shadowColor = rgbCss(accent, 1);
+      ctx.shadowBlur = 8 * Math.min(unit, 3);
+      ctx.fillStyle = rgbCss(mixRgb(accent, [255, 255, 255], 0.5));
       roundRectPath(ctx, -eyeGap - eyeW, vy - eyeH / 2, eyeW, eyeH, size * 0.03);
       ctx.fill();
       roundRectPath(ctx, eyeGap, vy - eyeH / 2, eyeW, eyeH, size * 0.03);
@@ -808,7 +1009,7 @@
       ctx.shadowBlur = 0;
 
       // Pequeños remaches en las esquinas.
-      ctx.fillStyle = rgbCss(p.accent, 0.42);
+      ctx.fillStyle = rgbCss(accent, 0.42);
       const rr = size * 0.035;
       const off = size * 0.33;
       for (const sx of [-1, 1]) {
@@ -822,10 +1023,7 @@
       ctx.restore();
     }
 
-    drawPattern(ctx, size) {
-      const base = this.skinBase;
-      const accent = this.skinAccent;
-      const pattern = this.skinPattern;
+    drawPattern(ctx, size, base, accent, pattern) {
       const half = size / 2;
 
       if (pattern === 'gradient') {
@@ -919,10 +1117,11 @@
 
   const canvas = document.getElementById('world');
   if (canvas && window.GD_DATA) {
-    const world = new GDWorld(canvas, window.GD_DATA.sections);
+    const dashCanvas = document.getElementById('dash-canvas');
+    const world = new GDWorld(canvas, window.GD_DATA.sections, dashCanvas);
 
     window.GDScene = {
-      setSection(index, instant) { world.setSection(index, instant); },
+      setSection(index, instant) { return world.setSection(index, instant); },
       jump() { return world.jump(); },
       setSkin(skin) { world.setSkin(skin); },
       hitTest(x, y) { return world.hitTest(x, y); },

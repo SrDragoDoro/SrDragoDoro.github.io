@@ -158,6 +158,13 @@
           this.tone({ freq: 98, to: 62, type: 'sine', when: 0, dur: 0.16, vol: 0.13 });
           break;
 
+        case 'dash':
+          this.noise(0, 0.22, 0.075, 2400);
+          this.tone({ freq: 96, to: 760, type: 'sawtooth', dur: 0.28, vol: 0.1, filter: 2800 });
+          this.tone({ freq: 320, to: 1480, type: 'triangle', when: 0.06, dur: 0.24, vol: 0.08 });
+          this.tone({ freq: 900, to: 1700, type: 'sine', when: 0.18, dur: 0.16, vol: 0.04 });
+          break;
+
         case 'select':
           this.tone({ freq: 660, to: 660, type: 'square', dur: 0.05, vol: 0.08, filter: 3400 });
           this.tone({ freq: 990, to: 1180, type: 'sine', when: 0.05, dur: 0.1, vol: 0.07 });

@@ -169,6 +169,10 @@ También vale `python -m http.server 8770`.
 - **Física:** salto parabólico de ~0,45 s, rotación de 180° o 360° con easing, squash & stretch
   al aterrizar, estela de partículas y anillo de impacto. El cubo vuelve a quedar de pie al
   aterrizar para que la cara y el visor se lean siempre bien.
+- **Dash de sección:** al cambiar de nivel, el cubo crece hasta ~5× su tamaño en una capa de
+  canvas por encima del contenido, gira 720°, cruza la pantalla con estelas, líneas de velocidad
+  y ondas de choque, y se encoge en el nuevo checkpoint. La sección entra mientras el cubo pasa,
+  así que el cambio queda enmascarado por el dash.
 - **Color triggers:** paletas RGB interpoladas por frame con un factor exponencial; la UI cambia
   con variables CSS.
 - **Audio:** osciladores, envolventes y ruido generado en `AudioContext`. No hay archivos ni
