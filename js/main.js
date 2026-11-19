@@ -1,579 +1,891 @@
 /* =============================================================================
- * main.js — pintador y controlador del portafolio.
+ * main.js — Controlador del portafolio.
  *
- * El HTML solo tiene el esqueleto (cabecera, secciones, pie). Todo el
- * contenido —proyectos, habilidades, trayectoria, contacto— se genera aquí a
- * partir de js/data.js. Así, tocar el contenido nunca significa tocar el
- * marcado ni este archivo.
- *
- * Bloques:
- *   1. Utilidades        5. Tarjetas de proyecto
- *   2. Idioma            6. Ficha de proyecto (visor)
- *   3. Render            7. Hero: cubo y semilla
- *   4. Secciones         8. Navegación móvil y animaciones
+ * · Navegación entre las cuatro secciones y barra de progreso.
+ * · Carrusel de proyectos + modal con el brief técnico.
+ * · Garage de skills conectado al skin del cubo.
+ * · Contacto, copiado al portapapeles y notificaciones de logro.
+ * · Teclado, swipe y accesibilidad.
  * ========================================================================== */
+
 (function () {
   'use strict';
 
-  /* ── 1. Utilidades ────────────────────────────────────────────────────── */
+  const DATA = window.GD_DATA;
+  const scene = window.GDScene;
+  const sound = window.GDAudio;
 
-  const $ = (sel, el = document) => el.querySelector(sel);
-  const $$ = (sel, el = document) => Array.from(el.querySelectorAll(sel));
+  const $ = (selector, root) => (root || document).querySelector(selector);
+  const $$ = (selector, root) => Array.from((root || document).querySelectorAll(selector));
 
-  /** Crea un elemento. Los atributos `null` o `false` se omiten. */
-  const h = (tag, attrs = {}, ...kids) => {
-    const el = document.createElement(tag);
-    for (const [k, v] of Object.entries(attrs)) {
-      if (v == null || v === false) continue;
-      if (k === 'class') el.className = v;
-      else if (k === 'text') el.textContent = v;
-      else if (k === 'html') el.innerHTML = v;
-      else el.setAttribute(k, v);
-    }
-    for (const kid of kids.flat()) if (kid != null) el.append(kid);
-    return el;
+  const DIFFICULTY = {
+    normal: { label: 'NORMAL', color: '#7DF05C' },
+    harder: { label: 'HARDER', color: '#FFB020' },
+    insane: { label: 'INSANE', color: '#FF4D6D' },
+    demon: { label: 'DEMON', color: '#B026FF' },
   };
 
-  /* ── 2. Idioma ────────────────────────────────────────────────────────── */
-  /* Los idiomas disponibles viven en window.LANGS (js/data.js). La
-   * preferencia guardada manda; si no hay, se usa el idioma del navegador. */
-
-  const LANGS = window.LANGS || [{ code: 'es', label: 'ES', name: 'Español' }];
-  const LANGS_CODES = LANGS.map((l) => l.code);
-
-  function pickLang() {
-    let saved = null;
-    try { saved = localStorage.getItem('lang'); } catch (e) { /* sin storage */ }
-    if (saved && LANGS_CODES.includes(saved)) return saved;
-
-    const nav = String(navigator.language || 'es').slice(0, 2).toLowerCase();
-    return LANGS_CODES.includes(nav) ? nav : LANGS_CODES[0];
-  }
-
-  let lang = pickLang();
-
-  /** Texto de interfaz por clave, con español como red de seguridad. */
-  const t = (key) =>
-    (UI[lang] && UI[lang][key]) || (UI.es && UI.es[key]) || key;
-
-  /** Contenido localizado de un bloque (proyecto, pilar, habilidad…). */
-  const loc = (obj) => (obj && (obj[lang] || obj.es)) || {};
-
-  /** Traduce un valor que puede ser string o { es, en, ja }. */
-  const tx = (v) => {
-    if (v == null) return '';
-    if (typeof v !== 'object') return v;
-    return v[lang] ?? v.es ?? v.en ?? '';
+  const state = {
+    section: 0,
+    project: 0,
+    skill: 0,
+    transitioning: false,
+    modalProject: null,
+    toastTimer: 0,
+    readout: 0,
+    readoutFrame: 0,
   };
 
-  /* ── 3. Render ────────────────────────────────────────────────────────── */
+  const els = {};
+  let screens = [];
+  let modalVideo = null;
 
-  function render() {
-    document.documentElement.lang = lang;
-    document.title = t('meta.title');
+  /* ── Utilidades ────────────────────────────────────────────────────── */
+  function initials(name) {
+    return String(name).replace(/[^a-zA-Z0-9]/g, '').slice(0, 2).toUpperCase();
+  }
 
-    const desc = $('meta[name="description"]');
-    if (desc) desc.setAttribute('content', t('meta.description'));
+  function escapeText(value) {
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
 
-    // Textos fijos marcados en el HTML con data-i18n y sus etiquetas ARIA.
-    $$('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
-    $$('[data-i18n-aria-label]').forEach((el) => {
-      el.setAttribute('aria-label', t(el.dataset.i18nAriaLabel));
+  function difficultyHtml(project) {
+    const diff = DIFFICULTY[project.difficulty] || DIFFICULTY.normal;
+    return `
+      <div class="difficulty" role="img" aria-label="Dificultad: ${diff.label}" style="--diff:${diff.color};color:${diff.color}">
+        ${difficultyFace(project.difficulty)}
+        <b>${diff.label}</b>
+      </div>`;
+  }
+
+  function difficultyFace(key) {
+    const open = '<svg viewBox="0 0 64 64" aria-hidden="true">';
+    const face = '<circle cx="32" cy="32" r="27" fill="currentColor" fill-opacity=".13" stroke="currentColor" stroke-width="3"/>';
+    const close = '</svg>';
+
+    if (key === 'harder') {
+      return open + face +
+        '<path d="M18 26l8 4M46 26l-8 4" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/>' +
+        '<circle cx="25" cy="32" r="3.2" fill="currentColor"/>' +
+        '<circle cx="39" cy="32" r="3.2" fill="currentColor"/>' +
+        '<rect x="21" y="39" width="22" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="2.6"/>' +
+        '<path d="M28 39v9M37 39v9" stroke="currentColor" stroke-width="1.8"/>' +
+        close;
+    }
+
+    if (key === 'insane') {
+      return open + face +
+        '<circle cx="24" cy="29" r="5.5" fill="none" stroke="currentColor" stroke-width="2.6"/>' +
+        '<circle cx="40" cy="29" r="5.5" fill="none" stroke="currentColor" stroke-width="2.6"/>' +
+        '<circle cx="24" cy="30" r="1.8" fill="currentColor"/>' +
+        '<circle cx="40" cy="30" r="1.8" fill="currentColor"/>' +
+        '<path d="M20 40l6 3 6-4 6 4 6-3v5l-6 4-6-3-6 3-6-4z" fill="currentColor"/>' +
+        close;
+    }
+
+    if (key === 'demon') {
+      return open + face +
+        '<path d="M14 13l9 12M50 13l-9 12" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/>' +
+        '<path d="M18 29l9 4-9 3zM46 29l-9 4 9 3z" fill="currentColor"/>' +
+        '<path d="M19 43l5-4 5 4 5-4 5 4 5-4 5 4-4 6H24z" fill="currentColor"/>' +
+        close;
+    }
+
+    // Normal
+    return open + face +
+      '<circle cx="24" cy="29" r="3.6" fill="currentColor"/>' +
+      '<circle cx="40" cy="29" r="3.6" fill="currentColor"/>' +
+      '<path d="M22 38c3 5 7 7 10 7s7-2 10-7" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/>' +
+      close;
+  }
+
+  function barHtml(bar, accent) {
+    return `
+      <div class="bar" style="--bar-color:${accent};--value:${bar.value}%">
+        <div class="bar__top"><span>${escapeText(bar.label)}</span><b>${bar.value}%</b></div>
+        <div class="bar__track"><div class="bar__fill"></div></div>
+      </div>`;
+  }
+
+  /* ── Iconos ────────────────────────────────────────────────────────── */
+  const SKILL_ICONS = {
+    csharp: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6l8 4.6v9.6l-8 4.6-8-4.6V7.2z"/><path d="M9.4 8.6l-1.1 6.8M14.7 8.6l-1.1 6.8M7.8 11.2h7.6M7.4 13.9h7.6"/></svg>',
+    cpp: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6l8 4.6v9.6l-8 4.6-8-4.6V7.2z"/><path d="M9 9.2v5.6M6.2 12h5.6M17 9.2v5.6M14.2 12h5.6"/></svg>',
+    unity: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l8 4.4v9.6l-8 4.4-8-4.4V7.2z"/><path d="M4.2 7.3L12 11.6l7.8-4.3M12 11.6v9.6"/></svg>',
+    unreal: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 6.8v5.4a4 4 0 008 0V6.8"/><path d="M8 17.2h8"/></svg>',
+    godot: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="7" width="15" height="11" rx="5"/><circle cx="9.4" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="14.6" cy="12" r="1.2" fill="currentColor" stroke="none"/><path d="M8 18v2M16 18v2M12 7V4"/></svg>',
+    shader: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8.2 16H3.8z"/><path d="M12 3v16M7.2 12h9.6"/></svg>',
+    git: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="7" cy="5" r="2.2"/><circle cx="7" cy="19" r="2.2"/><circle cx="17" cy="9" r="2.2"/><path d="M7 7.2v9.6M17 11.2v1.8c0 3-3 4.2-6 4.2"/></svg>',
+    physics: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="2.3"/><ellipse cx="12" cy="12" rx="9" ry="3.8"/><ellipse cx="12" cy="12" rx="3.8" ry="9" transform="rotate(45 12 12)"/></svg>',
+  };
+
+  const ACTION_ICONS = {
+    cv: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2.8h8l4 4V21H6z"/><path d="M14 2.8V7h4M9 12h6M9 15.5h6"/></svg>',
+    github: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 19.2c-4 1.2-4-2-5.6-2.5M15 21v-3.4c0-1 .1-1.4-.5-2 2.8-.3 5.6-1.4 5.6-6a4.8 4.8 0 00-1.3-3.3 4.5 4.5 0 00-.1-3.3s-1-.3-3.3 1.3a11.2 11.2 0 00-6 0C6.8 2.7 5.8 3 5.8 3a4.5 4.5 0 00-.1 3.3A4.8 4.8 0 004.4 9.6c0 4.6 2.8 5.7 5.6 6-.6.6-.6 1.2-.5 2V21"/></svg>',
+    linkedin: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 9.5V20M5.5 5.5v.1M10 20v-6.2a3.2 3.2 0 016.4 0V20"/></svg>',
+    itch: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8.5h16v9a2 2 0 01-2 2H6a2 2 0 01-2-2z"/><path d="M8 8.5V6a4 4 0 018 0v2.5M8 13h.1M16 13h.1M9 16.5h6"/></svg>',
+    mail: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M4 6.5l8 6 8-6"/></svg>',
+    link: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 13.5l3-3M8.2 16.8l-1.4 1.4a3.5 3.5 0 01-5-5l2.8-2.8a3.5 3.5 0 015 0M15.8 7.2l1.4-1.4a3.5 3.5 0 015 5l-2.8 2.8a3.5 3.5 0 01-5 0"/></svg>',
+    release: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12V5a2 2 0 012-2h7l9 9-9 9z"/><circle cx="7.5" cy="7.5" r="1.4" fill="currentColor" stroke="none"/></svg>',
+  };
+
+  /* ── Render del perfil ─────────────────────────────────────────────── */
+  function renderProfile() {
+    const p = DATA.profile;
+    setText('player-alias', p.alias);
+    setText('player-role', p.role);
+    setText('player-role-2', p.role);
+    setText('player-tagline', p.tagline);
+    setText('player-name', p.fullName);
+    setText('player-availability', p.availability);
+
+    if (els.avatar) {
+      els.avatar.src = p.avatar;
+      els.avatar.alt = `Retrato de ${p.fullName}`;
+    }
+
+    setText('player-bio', DATA.stats.bio);
+    setText('contact-title', DATA.contact.title);
+    setText('contact-lead', DATA.contact.lead);
+    setText('contact-note', DATA.contact.note);
+
+    const note = document.createElement('p');
+    note.className = 'player-card__note';
+    note.textContent = DATA.stats.note;
+    $('.player-card').appendChild(note);
+
+    els.statsGrid.innerHTML = DATA.stats.items.map((item) => `
+      <div class="stat">
+        <b>${escapeText(item.value)}</b>
+        <span>${escapeText(item.label)}</span>
+      </div>`).join('');
+  }
+
+  function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  }
+
+  /* ── HUD / barra de progreso ───────────────────────────────────────── */
+  function renderLevelNodes() {
+    els.nodes.innerHTML = DATA.sections.map((section, index) => `
+      <button class="node" type="button" data-goto="${index}" style="left:${section.progress}%" aria-label="${escapeText(section.label)}, ${section.progress}%">
+        <span class="node__label"><span class="node__pct">${section.progress}%</span> ${escapeText(section.label)}</span>
+      </button>`).join('');
+  }
+
+  function setHud(index, instant) {
+    const section = DATA.sections[index];
+    if (!section) return;
+
+    els.fill.style.width = section.progress + '%';
+    els.levelbar.setAttribute('aria-valuenow', String(section.progress));
+    els.levelbar.setAttribute('aria-valuetext', `${section.label}: ${section.progress}%`);
+
+    $$('.node', els.nodes).forEach((node, i) => {
+      const active = i === index;
+      node.classList.toggle('is-active', active);
+      if (active) node.setAttribute('aria-current', 'step');
+      else node.removeAttribute('aria-current');
     });
 
-    renderLangSwitch();
-    renderPillars();
-    renderSkills();
-    renderAbout();
-    renderContact();
+    els.prevSection.disabled = index === 0;
+    els.nextSection.disabled = index === DATA.sections.length - 1;
 
-    // Los lienzos necesitan que el navegador ya haya calculado el layout.
-    setTimeout(drawCovers, 0);
-    watchVideos();
-
-    // Las secciones recién pintadas también entran al hacer scroll.
-    setupReveal();
-
-    // Avisa a otros módulos (game.js) del cambio de idioma.
-    document.dispatchEvent(new CustomEvent('langchange', { detail: { lang } }));
-  }
-
-  /** Conmutador de idioma: un botón por cada entrada de window.LANGS. */
-  function renderLangSwitch() {
-    const host = $('.lang');
-    if (!host) return;
-
-    host.setAttribute('aria-label', t('lang.label'));
-    host.replaceChildren(...LANGS.map((l) =>
-      h('button', {
-        type: 'button',
-        class: `lang__btn${l.code === lang ? ' on' : ''}`,
-        'data-set-lang': l.code,
-        'aria-pressed': String(l.code === lang),
-        title: l.name,
-        lang: l.code,
-        text: l.label,
-      })
-    ));
-  }
-
-  /* ── 4. Secciones ─────────────────────────────────────────────────────── */
-
-  /** Los bloques de proyectos, uno por pilar, en el orden de PILLARS. */
-  function renderPillars() {
-    const host = $('.pillars');
-    host.replaceChildren(...PILLARS.map((pillar) => {
-      const items = PROJECTS.filter((p) => p.pillar === pillar.id);
-      const P = loc(pillar);
-
-      const head = h('header', { class: 'pillar__head' },
-        h('h3', { class: 'pillar__title', text: P.name }),
-        h('p', { class: 'pillar__blurb', text: P.blurb })
-      );
-
-      const grid = h('div', { class: 'grid' }, items.map(card));
-
-      return h('section', {
-        class: 'pillar', id: pillar.id,
-        style: `--c:${pillar.color}`,
-        'aria-labelledby': `h-${pillar.id}`,
-      },
-        head,
-        h('span', { class: 'pillar__rule', 'aria-hidden': 'true' }),
-        grid
-      );
-    }));
-  }
-
-  /** Habilidades: un bloque por grupo, con sus tecnologías. */
-  function renderSkills() {
-    const host = $('.skills');
-    host.replaceChildren(...SKILLS.map((s) => {
-      const S = loc(s);
-      return h('article', { class: 'skill', style: `--c:${s.color}` },
-        h('h3', { class: 'skill__title', text: S.title }),
-        h('p', { class: 'skill__text', text: S.text }),
-        h('ul', { class: 'skill__list' }, S.items.map((i) => h('li', { text: i })))
-      );
-    }));
-  }
-
-  /** Sobre mí: texto, cifras y trayectoria. */
-  function renderAbout() {
-    const A = loc(ABOUT);
-
-    $('.about__text').replaceChildren(...A.body.map((p) => h('p', { text: p })));
-
-    $('.about__facts').replaceChildren(...A.facts.map(([value, label]) =>
-      h('li', {}, h('b', { text: value }), h('span', { text: label }))
-    ));
-
-    // La trayectoria va debajo del texto, dentro de la misma sección.
-    const list = $('.journey__list');
-    if (list) {
-      list.replaceChildren(...JOURNEY.map((e) =>
-        h('li', { class: 'journey__item' },
-          h('p', { class: 'journey__when', text: tx(e.when) || '' }),
-          h('div', {},
-            h('h4', { class: 'journey__role', text: loc(e).role }),
-            h('p', { class: 'journey__text', text: loc(e).text }))
-        )
-      ));
-    }
-  }
-
-  /** Canales de contacto. Los que no tengan href no se muestran. */
-  function renderContact() {
-    $('.foot__links').replaceChildren(
-      ...CONTACT.filter((c) => c.href).map((c) =>
-        h('li', {}, h('a', {
-          href: c.href,
-          target: '_blank',
-          rel: 'noopener me',
-          text: `${tx(c.label)} ↗`,
-        }))
-      )
-    );
-  }
-
-  /* ── 5. Tarjetas de proyecto ──────────────────────────────────────────── */
-
-  // Orden en que se muestran los enlaces de una tarjeta.
-  const LINK_ORDER = ['live', 'release', 'repo'];
-
-  const imgUrl = (name) => `img/${name}.webp`;
-
-  /** Todos los medios de un proyecto: vídeo, portada y galería. */
-  function galleryOf(p) {
-    const items = [];
-    if (p.video) {
-      items.push({ video: `video/${p.video.loop}.mp4`, poster: imgUrl(p.video.poster) });
-    }
-    if (p.img) items.push({ img: imgUrl(p.img) });
-    (p.gallery || []).forEach((g) => {
-      if (typeof g === 'string') items.push({ img: imgUrl(g) });
-      else items.push({ video: g.src, poster: g.poster });
-    });
-    return items;
-  }
-
-  /** Enlaces públicos del proyecto, en el orden de LINK_ORDER. */
-  function linksOf(p) {
-    return LINK_ORDER.filter((k) => p.links && p.links[k]).map((k) =>
-      h('a', {
-        href: p.links[k],
-        target: '_blank',
-        rel: 'noopener',
-      }, t(`link.${k}`), h('span', { 'aria-hidden': 'true', text: ' ↗' }))
-    );
-  }
-
-  /** Bloque "lo que hice": qué hice y cuál fue la parte difícil. */
-  function roleOf(L) {
-    if (!L.role) return null;
-    return h('p', { class: 'card__role' },
-      h('span', { class: 'card__role-k', text: t('card.role') }),
-      L.role
-    );
-  }
-
-  /** Cifras medidas del proyecto. `stats` vive en el proyecto, no en el idioma. */
-  function statsOf(p) {
-    if (!p.stats) return null;
-    return h('ul', { class: 'card__nums' },
-      p.stats.map(([value, label]) =>
-        h('li', {}, h('b', { text: value }), h('span', { text: tx(label) })))
-    );
-  }
-
-  /** Construye la tarjeta de un proyecto. */
-  function card(p) {
-    const L = loc(p);
-    const pillar = PILLARS.find((x) => x.id === p.pillar);
-
-    // --- medio de la tarjeta -------------------------------------------
-    let media;
-    if (p.video) {
-      // Bucle mudo: solo se carga y reproduce cuando la tarjeta está a la vista.
-      media = h('div', { class: 'card__media' },
-        h('video', {
-          'data-src': `video/${p.video.loop}.mp4`,
-          poster: imgUrl(p.video.poster),
-          muted: '', loop: '', playsinline: '', preload: 'none',
-          'aria-label': L.title,
-        })
-      );
-    } else if (p.img) {
-      media = h('div', { class: 'card__media' },
-        h('img', { src: imgUrl(p.img), alt: L.title, loading: 'lazy' })
-      );
+    if (instant) {
+      state.readout = section.progress;
+      els.readout.textContent = section.progress + '%';
+      cancelAnimationFrame(state.readoutFrame);
     } else {
-      // Sin captura todavía: portada generada con código.
-      media = h('div', { class: 'card__media' },
-        h('canvas', { class: 'card__cover', 'data-cover': p.id, 'data-pillar': p.pillar, 'aria-hidden': 'true' }),
-        h('p', { class: 'card__stamp', text: L.status })
-      );
+      animateReadout(section.progress);
     }
 
-    // Contador de medios: avisa de que la tarjeta tiene ficha con más contenido.
-    const count = galleryOf(p).length;
-    if (count > 1) {
-      media.append(h('p', { class: 'card__count', 'aria-hidden': 'true', text: `▦ ${count} ${t('card.media')}` }));
+    applyAccent(section.palette);
+    document.querySelector('meta[name="theme-color"]').setAttribute('content', section.palette.bg);
+  }
+
+  function animateReadout(target) {
+    const from = state.readout;
+    const start = performance.now();
+    const duration = 620;
+    cancelAnimationFrame(state.readoutFrame);
+
+    const step = (now) => {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      const value = Math.round(from + (target - from) * eased);
+      state.readout = value;
+      els.readout.textContent = value + '%';
+      if (t < 1) state.readoutFrame = requestAnimationFrame(step);
+    };
+    state.readoutFrame = requestAnimationFrame(step);
+  }
+
+  function applyAccent(palette) {
+    const root = document.documentElement;
+    root.style.setProperty('--accent', palette.accent);
+    root.style.setProperty('--accent-2', palette.accent2);
+    root.style.setProperty('--accent-glow', hexAlpha(palette.accent, 0.45));
+  }
+
+  function hexAlpha(hex, alpha) {
+    const value = Math.round(alpha * 255).toString(16).padStart(2, '0');
+    return hex + value;
+  }
+
+  /* ── Navegación entre secciones ────────────────────────────────────── */
+  function goSection(index) {
+    const total = DATA.sections.length;
+    if (index < 0 || index >= total) return;
+    if (index === state.section || state.transitioning) return;
+
+    state.transitioning = true;
+    const direction = index > state.section ? 1 : -1;
+    const currentScreen = screens[state.section];
+    const nextScreen = screens[index];
+
+    state.section = index;
+    setHud(index, false);
+
+    const section = DATA.sections[index];
+    try {
+      if (history.replaceState) history.replaceState(null, '', '#' + section.id);
+    } catch (error) {
+      // file:// u otros contextos sin History API: la navegación sigue igual.
     }
 
-    // --- cuerpo de la tarjeta ------------------------------------------
-    const body = h('div', { class: 'card__body' },
-      h('p', { class: 'card__meta' },
-        h('span', { text: p.year }),
-        h('span', { class: 'card__status', text: L.status })
-      ),
-      h('h4', { class: 'card__title' },
-        h('button', { type: 'button', class: 'card__open', 'data-open': p.id, text: L.title })
-      ),
-      h('p', { class: 'card__text', text: L.text }),
-      roleOf(L),
-      statsOf(p),
-      h('ul', { class: 'card__tags' }, p.tags.map((tag) => h('li', { text: tag }))),
-      h('p', { class: 'card__links' }, linksOf(p))
-    );
+    if (scene) scene.setSection(index);
+    sound.play('section');
+    if (index !== 1) pauseProjectVideos();
 
-    return h('article', {
-      class: `card${p.featured ? ' card--featured' : ''}`,
-      style: `--c:${pillar ? pillar.color : 'var(--cyan)'}`,
-      'data-id': p.id,
-    }, media, body);
+    currentScreen.classList.add(direction > 0 ? 'screen--out-left' : 'screen--out-right');
+
+    window.setTimeout(() => {
+      currentScreen.hidden = true;
+      currentScreen.classList.remove('screen--out-left', 'screen--out-right');
+
+      nextScreen.hidden = false;
+      els.main.scrollTop = 0;
+      nextScreen.classList.add(direction > 0 ? 'screen--in-right' : 'screen--in-left');
+      if (index === 1) syncProjectVideos();
+      else pauseProjectVideos();
+
+      window.setTimeout(() => {
+        nextScreen.classList.remove('screen--in-left', 'screen--in-right');
+      }, 360);
+    }, 145);
+
+    window.setTimeout(() => {
+      state.transitioning = false;
+    }, 470);
+
+    els.live.textContent = `Sección ${section.label}, ${section.progress} por ciento del nivel.`;
   }
 
-  /** Pinta las portadas procedurales de las tarjetas que no tienen imagen. */
-  function drawCovers() {
-    $$('canvas[data-cover]').forEach((cv) => {
-      const pillar = PILLARS.find((x) => x.id === cv.dataset.pillar);
-      FX.cover(cv, FX.hash(cv.dataset.cover), pillar ? pillar.color : null);
+  /* ── Proyectos ─────────────────────────────────────────────────────── */
+  function renderProjects() {
+    els.track.innerHTML = DATA.projects.map((project, index) => projectCard(project, index)).join('');
+    els.dots.innerHTML = DATA.projects.map((project, index) => `
+      <button class="levels__dot" type="button" data-project-dot="${index}" aria-label="Ir al proyecto ${index + 1}: ${escapeText(project.name)}" aria-pressed="false"></button>`).join('');
+
+    els.track.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-project]');
+      if (!button) return;
+      openProject(Number(button.dataset.project));
     });
-  }
 
-  let resizeTimer;
-  addEventListener('resize', () => {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(drawCovers, 200);
-  });
-
-  /* ── 6. Ficha de proyecto (visor) ─────────────────────────────────────── */
-
-  const detail = $('.detail');
-  const stage = $('.detail__stage');
-  let current = null;   // { p, items, i }
-
-  /** Abre la ficha de un proyecto. */
-  function openDetail(id) {
-    const p = PROJECTS.find((x) => x.id === id);
-    if (!p) return;
-
-    const L = loc(p);
-    const pillar = PILLARS.find((x) => x.id === p.pillar);
-    current = { p, items: galleryOf(p), i: 0 };
-
-    detail.style.setProperty('--c', pillar ? pillar.color : 'var(--cyan)');
-    $('.detail__title').textContent = L.title;
-
-    // Miniaturas: solo si hay más de un medio.
-    const thumbs = $('.detail__thumbs');
-    thumbs.hidden = current.items.length < 2;
-    thumbs.replaceChildren(...current.items.map((it, i) =>
-      h('button', {
-        type: 'button',
-        class: `detail__thumb${it.video ? ' is-video' : ''}`,
-        'data-index': i,
-        'aria-label': `${i + 1} / ${current.items.length}`,
-      }, it.poster || it.img ? h('img', { src: it.video ? it.poster : it.img, alt: '', loading: 'lazy' }) : null)
-    ));
-
-    // Textos de la ficha.
-    $('.detail__body').replaceChildren(...[
-      h('p', { class: 'card__meta' },
-        h('span', { text: p.year }),
-        h('span', { class: 'card__status', text: L.status })
-      ),
-      h('p', { class: 'detail__text', text: L.text }),
-      roleOf(L),
-      statsOf(p),
-      h('ul', { class: 'card__tags' }, p.tags.map((tag) => h('li', { text: tag }))),
-      h('p', { class: 'card__links' }, linksOf(p)),
-    ].filter(Boolean));
-
-    detail.showModal();
-    show(0);
-  }
-
-  /** Muestra el medio `i` del visor. */
-  function show(i) {
-    if (!current) return;
-    const { items } = current;
-    const n = items.length;
-
-    // Pausa el vídeo anterior antes de sustituirlo.
-    const old = stage.querySelector('video');
-    if (old) old.pause();
-
-    if (!n) return;
-
-    current.i = (i + n) % n;
-    const it = items[current.i];
-    const title = loc(current.p).title;
-
-    const el = it.video
-      ? h('video', { src: it.video, poster: it.poster, controls: '', playsinline: '', preload: 'metadata' })
-      : h('img', { src: it.img, alt: `${title} · ${current.i + 1} / ${n}` });
-
-    const nav = n > 1 ? [
-      h('button', { type: 'button', class: 'detail__nav detail__nav--prev', 'data-step': -1, 'aria-label': t('detail.prev'), text: '‹' }),
-      h('button', { type: 'button', class: 'detail__nav detail__nav--next', 'data-step': 1, 'aria-label': t('detail.next'), text: '›' }),
-      h('p', { class: 'detail__count', text: `${current.i + 1} / ${n}` }),
-    ] : [];
-
-    stage.replaceChildren(el, ...nav);
-    if (it.video) el.play().catch(() => { /* el navegador puede bloquearlo */ });
-
-    // Marca la miniatura activa.
-    $$('.detail__thumb').forEach((b, k) => b.setAttribute('aria-current', k === current.i));
-    const active = $('.detail__thumb[aria-current="true"]');
-    if (active) active.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-  }
-
-  // Clic en un botón de "abrir ficha" o en la tarjeta.
-  document.addEventListener('click', (e) => {
-    const opener = e.target.closest('[data-open]');
-    if (opener) { openDetail(opener.dataset.open); return; }
-
-    const cardEl = e.target.closest('.card[data-id]');
-    if (cardEl && !e.target.closest('a, button')) openDetail(cardEl.dataset.id);
-  });
-
-  // Navegación dentro del visor.
-  detail.addEventListener('click', (e) => {
-    if (e.target === detail) { detail.close(); return; }
-    const step = e.target.closest('[data-step]');
-    if (step) { show(current.i + Number(step.dataset.step)); return; }
-    const thumb = e.target.closest('[data-index]');
-    if (thumb) show(Number(thumb.dataset.index));
-  });
-
-  detail.addEventListener('keydown', (e) => {
-    if (!current || e.target.tagName === 'VIDEO') return;  // en el vídeo las flechas son del reproductor
-    if (e.key === 'ArrowRight') show(current.i + 1);
-    if (e.key === 'ArrowLeft') show(current.i - 1);
-  });
-
-  detail.addEventListener('close', () => {
-    // El evento 'close' llega tarde: si ya se abrió otra ficha, no se toca.
-    if (detail.open) return;
-    const v = stage.querySelector('video');
-    if (v) { v.pause(); v.removeAttribute('src'); v.load(); }
-    stage.replaceChildren();
-    current = null;
-  });
-
-  $('.detail__close').addEventListener('click', () => detail.close());
-
-  /* ── 7. Hero: cubo y semilla ──────────────────────────────────────────── */
-  /* La semilla es la fecha de hoy (AAAAMMDD): el cubo cambia cada día. */
-
-  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-  const now = new Date();
-  let seed = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
-
-  const heroCube = FX.cube($('.hero__cube'));
-  heroCube.setSeed(seed);
-
-  const seedLabel = $('.hero__seed');
-  const showSeed = () => { if (seedLabel) seedLabel.textContent = seed; };
-
-  $('.hero__again').addEventListener('click', () => {
-    seed = (Math.random() * 1e8) | 0;
-    showSeed();
-    heroCube.setSeed(seed);
-    if (reducedMotion) heroCube.redraw();
-  });
-
-  /* ── 8. Navegación móvil y animaciones ────────────────────────────────── */
-
-  // Vídeos en bucle: solo cargan y corren cuando están a la vista.
-  const io = 'IntersectionObserver' in window
-    ? new IntersectionObserver((entries) => {
-        for (const entry of entries) {
-          const v = entry.target;
-          if (entry.isIntersecting) {
-            if (!v.src) v.src = v.dataset.src;
-            v.play().catch(() => { /* autoplay bloqueado */ });
-          } else {
-            v.pause();
-          }
-        }
-      }, { threshold: 0.35 })
-    : null;
-
-  function watchVideos() {
-    if (reducedMotion || !io) return;
-    $$('video[data-src]').forEach((v) => { v.muted = true; io.observe(v); });
-  }
-
-  // Menú en móvil: el botón abre y cierra la lista de enlaces.
-  const menuBtn = $('.nav__toggle');
-  const navLinks = $('.nav__links');
-  if (menuBtn && navLinks) {
-    menuBtn.addEventListener('click', () => {
-      const open = navLinks.classList.toggle('is-open');
-      menuBtn.setAttribute('aria-expanded', String(open));
+    els.dots.addEventListener('click', (event) => {
+      const dot = event.target.closest('[data-project-dot]');
+      if (!dot) return;
+      goProject(Number(dot.dataset.projectDot));
     });
-    // Al pulsar un enlace, el menú se cierra.
-    navLinks.addEventListener('click', (e) => {
-      if (e.target.tagName === 'A') {
-        navLinks.classList.remove('is-open');
-        menuBtn.setAttribute('aria-expanded', 'false');
+
+    els.levelPrev.addEventListener('click', () => goProject(state.project - 1));
+    els.levelNext.addEventListener('click', () => goProject(state.project + 1));
+
+    setupSwipe();
+    updateProject(0, true);
+  }
+
+  function projectCard(project, index) {
+    const diff = DIFFICULTY[project.difficulty] || DIFFICULTY.normal;
+    const media = mediaHtml(project, 'card');
+
+    return `
+      <article class="level-card ${index === 0 ? 'is-active' : ''}" style="--card-accent:${project.accent};--diff:${diff.color}" aria-label="${escapeText(project.name)}">
+        <div class="level-card__media">
+          <span class="level-card__badge">${String(index + 1).padStart(2, '0')}</span>
+          ${media}
+          <span class="level-card__engine">${escapeText(project.engine)}</span>
+        </div>
+        <div class="level-card__body">
+          <div class="level-card__head">
+            <div>
+              <p class="level-card__kicker">NIVEL ${String(index + 1).padStart(2, '0')} · ${escapeText(project.year)} · ${escapeText(project.status)}</p>
+              <h3 class="level-card__title">${escapeText(project.name)}</h3>
+            </div>
+            ${difficultyHtml(project)}
+          </div>
+          <p class="level-card__summary">${escapeText(project.summary)}</p>
+          <p class="level-card__note">${escapeText(project.difficultyNote)}</p>
+          <div class="bars">${project.bars.map((bar) => barHtml(bar, project.accent)).join('')}</div>
+          <ul class="tags">${project.tags.map((tag) => `<li class="tag">${escapeText(tag)}</li>`).join('')}</ul>
+          <button class="btn btn--green level-card__play" type="button" data-project="${index}">
+            <span aria-hidden="true">▶</span> PLAY / VER CÓDIGO
+          </button>
+        </div>
+      </article>`;
+  }
+
+  function mediaHtml(project, context) {
+    const media = project.media;
+    const label = escapeText(project.name);
+
+    if (media && media.type === 'video') {
+      if (context === 'modal') {
+        return `<video id="modal-video" controls autoplay muted loop playsinline poster="${media.poster || ''}">
+          <source src="${media.src}" type="video/mp4">
+        </video>`;
       }
-    });
+      return `<video autoplay muted loop playsinline preload="metadata" poster="${media.poster || ''}" aria-label="Gameplay de ${label}">
+        <source src="${media.src}" type="video/mp4">
+      </video>`;
+    }
+
+    if (media && media.type === 'image') {
+      return `<img src="${media.src}" alt="Captura de ${label}" loading="lazy" width="800" height="500">`;
+    }
+
+    const cls = context === 'modal' ? 'modal__placeholder' : 'level-card__placeholder';
+    return `<div class="${cls}">
+      <b>${initials(project.name)}</b>
+      <span>Gameplay · captura pendiente</span>
+    </div>`;
   }
 
-  // Entrada de los bloques al hacer scroll.
-  const revealTargets = ['.sect__head', '.pillar', '.skill', '.about__side', '.about__text', '.journey'];
-  let revealer = null;   // el observador vivo, para poder reconectarlo
-  let pendingReveal = []; // bloques marcados que aún no han aparecido
-
-  /**
-   * Marca los bloques para que aparezcan al entrar en pantalla.
-   * Se puede volver a llamar (por ejemplo al cambiar de idioma): los bloques
-   * que ya se habían visto conservan su estado y los nuevos se animan.
-   */
-  function setupReveal() {
-    if (!('IntersectionObserver' in window) || reducedMotion) return;
-
-    // Observador anterior: se desconecta para no observar dos veces lo mismo.
-    if (revealer) revealer.disconnect();
-
-    const obs = new IntersectionObserver((entries) => {
-      for (const entry of entries) {
-        if (!entry.isIntersecting) continue;
-        entry.target.classList.add('is-in');
-        obs.unobserve(entry.target);
-      }
-    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.06 });
-
-    revealer = obs;
-
-    revealTargets.forEach((sel) => {
-      $$(sel).forEach((el, i) => {
-        el.classList.add('reveal');
-        el.style.transitionDelay = `${Math.min(i, 4) * 60}ms`;
-        obs.observe(el);
-      });
-    });
-
-    pendingReveal = $$('.reveal:not(.is-in)');
+  function goProject(index, silent) {
+    const total = DATA.projects.length;
+    state.project = ((index % total) + total) % total;
+    updateProject(state.project, silent);
+    if (!silent) sound.play('click');
   }
 
-  /**
-   * Un salto brusco (tecla Fin, rueda rápida, ancla) puede dejar bloques por
-   * encima del viewport sin que el observador llegue a verlos nunca: aquí se
-   * revelan igualmente, para que nunca quede un hueco en blanco.
-   */
-  function sweepReveal() {
-    if (!pendingReveal.length) return;
-    const rest = [];
-    for (const el of pendingReveal) {
-      if (el.classList.contains('is-in')) continue;         // ya apareció
-      if (el.getBoundingClientRect().bottom < 0) {           // quedó por encima
-        el.classList.add('is-in');
-        if (revealer) revealer.unobserve(el);
+  function syncProjectVideos() {
+    const videos = $$('video', els.track);
+    videos.forEach((video, index) => {
+      if (index === state.project) {
+        const promise = video.play();
+        if (promise && promise.catch) promise.catch(() => {});
       } else {
-        rest.push(el);
+        video.pause();
       }
-    }
-    pendingReveal = rest;
+    });
   }
 
-  // Barrido al hacer scroll, limitado a un fotograma por movimiento.
-  let sweepRaf = 0;
-  addEventListener('scroll', () => {
-    if (sweepRaf) return;
-    sweepRaf = requestAnimationFrame(() => { sweepRaf = 0; sweepReveal(); });
-  }, { passive: true });
+  function pauseProjectVideos() {
+    $$('video', els.track).forEach((video) => video.pause());
+  }
 
-  // Conmutador de idioma (delegado: los botones se repintan en cada render).
-  $('.lang').addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-set-lang]');
-    if (!btn) return;
-    const next = btn.dataset.setLang;
-    if (!LANGS_CODES.includes(next) || next === lang) return;
-    lang = next;
-    try { localStorage.setItem('lang', lang); } catch (err) { /* sin storage */ }
-    render();
-  });
+  function updateProject(index, silent) {
+    const project = DATA.projects[index];
+    if (!project) return;
 
-  /* ── Arranque ─────────────────────────────────────────────────────────── */
+    els.track.style.transform = `translateX(-${index * 100}%)`;
+    $$('.level-card', els.track).forEach((card, i) => {
+      card.classList.toggle('is-active', i === index);
+    });
+    $$('.levels__dot', els.dots).forEach((dot, i) => {
+      dot.classList.toggle('is-active', i === index);
+      dot.setAttribute('aria-pressed', String(i === index));
+    });
+    syncProjectVideos();
 
-  render();
-  showSeed();
-  heroCube.start();
-  FX.mark($('.nav__mark'));
+    els.levelCount.textContent = `${index + 1} / ${DATA.projects.length}`;
+    els.viewport.setAttribute('aria-label', `Proyecto ${index + 1} de ${DATA.projects.length}: ${project.name}`);
+    if (!silent) {
+      els.live.textContent = `Proyecto ${index + 1} de ${DATA.projects.length}: ${project.name}.`;
+    }
+  }
+
+  function setupSwipe() {
+    let startX = 0;
+    let startY = 0;
+    let tracking = false;
+
+    els.viewport.addEventListener('pointerdown', (event) => {
+      if (event.pointerType === 'mouse' && event.button !== 0) return;
+      startX = event.clientX;
+      startY = event.clientY;
+      tracking = true;
+    });
+
+    els.viewport.addEventListener('pointerup', (event) => {
+      if (!tracking) return;
+      tracking = false;
+      const dx = event.clientX - startX;
+      const dy = event.clientY - startY;
+      if (Math.abs(dx) > 44 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+        goProject(state.project + (dx < 0 ? 1 : -1));
+      }
+    });
+
+    els.viewport.addEventListener('pointercancel', () => {
+      tracking = false;
+    });
+  }
+
+  /* ── Modal de proyecto ─────────────────────────────────────────────── */
+  function openProject(index) {
+    const project = DATA.projects[index];
+    if (!project) return;
+
+    state.modalProject = project;
+    modalVideo = null;
+
+    els.modal.style.setProperty('--modal-accent', project.accent);
+    els.modalKicker.textContent = `${project.engine} · ${project.year} · ${project.status}`;
+    els.modalTitle.textContent = project.name;
+    els.modalDescription.textContent = project.description;
+
+    els.modalMedia.innerHTML = mediaHtml(project, 'modal');
+    modalVideo = $('#modal-video', els.modalMedia);
+
+    els.modalPatterns.innerHTML = project.patterns
+      .map((pattern) => `<li>${escapeText(pattern)}</li>`)
+      .join('');
+
+    els.modalTags.innerHTML = project.tags
+      .map((tag) => `<li class="tag">${escapeText(tag)}</li>`)
+      .join('');
+
+    els.modalBars.classList.add('is-active');
+    els.modalBars.innerHTML = project.bars
+      .map((bar) => barHtml(bar, project.accent))
+      .join('');
+
+    const links = [];
+    if (project.links && project.links.repo) {
+      links.push(`<a class="modal__link modal__link--primary" href="${project.links.repo}" target="_blank" rel="noopener noreferrer">
+        <span>VER CÓDIGO</span><span>↗</span>
+      </a>`);
+    }
+    if (project.links && project.links.itch) {
+      links.push(`<a class="modal__link" href="${project.links.itch}" target="_blank" rel="noopener noreferrer">
+        <span>ITCH.IO</span><span>↗</span>
+      </a>`);
+    }
+    if (project.links && project.links.release) {
+      links.push(`<a class="modal__link" href="${project.links.release}" target="_blank" rel="noopener noreferrer">
+        <span>RELEASE</span><span>↗</span>
+      </a>`);
+    }
+    if (project.links && project.links.live) {
+      links.push(`<a class="modal__link" href="${project.links.live}" target="_blank" rel="noopener noreferrer">
+        <span>VER EN VIVO</span><span>↗</span>
+      </a>`);
+    }
+    els.modalLinks.innerHTML = links.join('');
+
+    pauseProjectVideos();
+    els.modal.showModal();
+    sound.play('open');
+  }
+
+  function closeProject() {
+    if (els.modal.open) els.modal.close();
+  }
+
+  /* ── Skills ────────────────────────────────────────────────────────── */
+  function renderSkills() {
+    els.skillsGrid.innerHTML = DATA.skills.map((skill, index) => `
+      <button class="skill-tile" type="button" data-skill="${index}" style="--skill-color:${skill.color}" aria-pressed="false" aria-label="${escapeText(skill.name)}: ${escapeText(skill.levelLabel)}, ${skill.level}%">
+        ${SKILL_ICONS[skill.icon] || SKILL_ICONS.unity}
+        <span>${escapeText(skill.name)}</span>
+      </button>`).join('');
+
+    els.skillsGrid.addEventListener('click', (event) => {
+      const tile = event.target.closest('[data-skill]');
+      if (!tile) return;
+      selectSkill(Number(tile.dataset.skill));
+    });
+
+    const defaultIndex = Math.max(0, DATA.skills.findIndex((skill) => skill.id === 'unity'));
+    selectSkill(defaultIndex, true);
+  }
+
+  function selectSkill(index, silent) {
+    const skill = DATA.skills[index];
+    if (!skill) return;
+
+    state.skill = index;
+    $$('.skill-tile', els.skillsGrid).forEach((tile, i) => {
+      const active = i === index;
+      tile.classList.toggle('is-active', active);
+      tile.setAttribute('aria-pressed', String(active));
+    });
+
+    els.skillName.textContent = skill.name;
+    els.skillLevelLabel.textContent = skill.levelLabel;
+    els.skillLevelValue.textContent = skill.level + '%';
+    els.skillText.textContent = skill.text;
+    els.skillSystems.innerHTML = skill.systems.map((system) => `<li>${escapeText(system)}</li>`).join('');
+    els.skillPanel.style.setProperty('--bar-color', skill.color);
+    els.skillBar.style.width = skill.level + '%';
+
+    if (scene) scene.setSkin(skill.skin);
+    if (!silent) {
+      sound.play('select');
+      els.live.textContent = `Skin equipada: ${skill.name}. Dominio ${skill.level} por ciento.`;
+    }
+  }
+
+  /* ── Contacto ──────────────────────────────────────────────────────── */
+  function renderContact() {
+    const links = DATA.links;
+    const actions = [];
+
+    if (links.cv) {
+      actions.push({
+        href: links.cv,
+        icon: 'cv',
+        title: 'DESCARGAR CV',
+        sub: 'PDF · 1 página',
+        primary: true,
+        download: true,
+        toast: 'CV descargado. Una página, lista para enviar.',
+      });
+    }
+
+    if (links.github) {
+      actions.push({
+        href: links.github,
+        icon: 'github',
+        title: 'GITHUB',
+        sub: '@SrDragoDoro',
+        newTab: true,
+      });
+    }
+
+    if (links.linkedin) {
+      actions.push({
+        href: links.linkedin,
+        icon: 'linkedin',
+        title: 'LINKEDIN',
+        sub: 'Perfil profesional',
+        newTab: true,
+      });
+    }
+
+    if (links.itch) {
+      actions.push({
+        href: links.itch,
+        icon: 'itch',
+        title: 'ITCH.IO',
+        sub: 'Juegos publicados',
+        newTab: true,
+      });
+    }
+
+    if (links.releases) {
+      actions.push({
+        href: links.releases,
+        icon: 'release',
+        title: 'RELEASES',
+        sub: 'Versiones públicas',
+        newTab: true,
+      });
+    }
+
+    if (links.email) {
+      actions.push({
+        copy: links.email,
+        icon: 'mail',
+        title: 'COPIAR EMAIL',
+        sub: links.email,
+        toast: `Correo copiado: ${links.email}`,
+      });
+    }
+
+    if (links.site) {
+      actions.push({
+        copy: links.site.replace(/^https?:\/\//, ''),
+        icon: 'link',
+        title: 'COPIAR ENLACE',
+        sub: links.site.replace(/^https?:\/\//, ''),
+        toast: 'Enlace del portafolio copiado. ¡A por el 100%!',
+      });
+    }
+
+    els.contactActions.innerHTML = actions.map((action, index) => {
+      const icon = ACTION_ICONS[action.icon] || ACTION_ICONS.link;
+      const inner = `
+        <span class="action__icon" aria-hidden="true">${icon}</span>
+        <span><b>${escapeText(action.title)}</b><small>${escapeText(action.sub)}</small></span>`;
+
+      if (action.copy) {
+        return `<button class="action ${action.primary ? 'action--primary' : ''}" type="button" data-copy="${index}" data-toast="${escapeText(action.toast)}">${inner}</button>`;
+      }
+
+      return `<a class="action ${action.primary ? 'action--primary' : ''}" href="${action.href}" ${action.newTab ? 'target="_blank" rel="noopener noreferrer"' : ''} ${action.download ? 'download' : ''} data-toast="${escapeText(action.toast || '')}">${inner}</a>`;
+    }).join('');
+
+    els.contactActions.addEventListener('click', (event) => {
+      const copyButton = event.target.closest('[data-copy]');
+      if (copyButton) {
+        event.preventDefault();
+        const action = actions[Number(copyButton.dataset.copy)];
+        if (action && action.copy) {
+          copyToClipboard(action.copy, action.toast);
+        }
+        return;
+      }
+
+      const link = event.target.closest('a.action');
+      if (link && link.dataset.toast) {
+        showToast('¡LOGRO DESBLOQUEADO!', link.dataset.toast);
+        sound.play('achievement');
+      }
+    });
+  }
+
+  async function copyToClipboard(text, message) {
+    let ok = false;
+    try {
+      await navigator.clipboard.writeText(text);
+      ok = true;
+    } catch (error) {
+      ok = legacyCopy(text);
+    }
+
+    if (ok) {
+      showToast('¡LOGRO DESBLOQUEADO!', message);
+      sound.play('achievement');
+    } else {
+      showToast('NO SE PUDO COPIAR', 'Selecciona y copia el texto manualmente.');
+    }
+  }
+
+  function legacyCopy(text) {
+    const area = document.createElement('textarea');
+    area.value = text;
+    area.setAttribute('readonly', '');
+    area.style.position = 'fixed';
+    area.style.top = '-1000px';
+    area.style.opacity = '0';
+    document.body.appendChild(area);
+    area.select();
+    let ok = false;
+    try {
+      ok = document.execCommand('copy');
+    } catch (error) {
+      ok = false;
+    }
+    area.remove();
+    return ok;
+  }
+
+  /* ── Toast ─────────────────────────────────────────────────────────── */
+  function showToast(title, message) {
+    els.toastTitle.textContent = title;
+    els.toastMessage.textContent = message;
+    els.toast.classList.add('is-on');
+    window.clearTimeout(state.toastTimer);
+    state.toastTimer = window.setTimeout(() => {
+      els.toast.classList.remove('is-on');
+    }, 3600);
+  }
+
+  /* ── Eventos globales ──────────────────────────────────────────────── */
+  function bindEvents() {
+    // Botones y enlaces internos (menú, marca, checkpoints).
+    document.addEventListener('click', (event) => {
+      const target = event.target.closest('[data-goto]');
+      if (!target) return;
+      event.preventDefault();
+      const index = Number(target.dataset.goto);
+      if (Number.isFinite(index)) goSection(index);
+    });
+
+    els.prevSection.addEventListener('click', () => goSection(state.section - 1));
+    els.nextSection.addEventListener('click', () => goSection(state.section + 1));
+
+    els.soundToggle.addEventListener('click', () => {
+      const active = sound.toggle();
+      els.soundToggle.setAttribute('aria-pressed', String(active));
+      els.soundToggle.setAttribute('aria-label', active ? 'Silenciar sonido' : 'Activar sonido');
+      els.soundToggle.title = active ? 'Silenciar sonido' : 'Activar sonido';
+    });
+
+    els.modalClose.addEventListener('click', closeProject);
+
+    els.modal.addEventListener('click', (event) => {
+      if (event.target === els.modal) closeProject();
+    });
+
+    els.modal.addEventListener('close', () => {
+      if (modalVideo) {
+        modalVideo.pause();
+        modalVideo.currentTime = 0;
+        modalVideo = null;
+      }
+      if (state.section === 1) syncProjectVideos();
+      sound.play('close');
+    });
+
+    // Click directo sobre el cubo.
+    document.addEventListener('pointerdown', (event) => {
+      if (event.button !== 0) return;
+      const interactive = event.target.closest
+        ? event.target.closest('a, button, input, textarea, select, dialog, [role="button"]')
+        : null;
+      if (interactive || !scene) return;
+      if (scene.hitTest(event.clientX, event.clientY)) {
+        if (scene.jump()) sound.play('jump');
+      }
+    });
+
+    // Aterrizaje: pequeño golpe sintetizado.
+    window.addEventListener('gd:land', () => sound.play('land'));
+
+    // Cambios manuales del hash (#proyectos, #skills…) en la barra del navegador.
+    window.addEventListener('hashchange', () => {
+      const requested = window.location.hash.replace('#', '').toLowerCase();
+      const index = DATA.sections.findIndex(
+        (section) => section.id === requested || String(section.progress) === requested
+      );
+      if (index >= 0 && index !== state.section) goSection(index);
+    });
+
+    // Teclado.
+    document.addEventListener('keydown', (event) => {
+      if (els.modal.open) return;
+      const tag = (event.target.tagName || '').toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select' || event.target.isContentEditable) return;
+
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        goSection(state.section - 1);
+        return;
+      }
+
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        goSection(state.section + 1);
+        return;
+      }
+
+      if (state.section === 1) {
+        const key = event.key.toLowerCase();
+        if (key === 'a' || key === 'arrowup') {
+          event.preventDefault();
+          goProject(state.project - 1);
+        } else if (key === 'd' || key === 'arrowdown') {
+          event.preventDefault();
+          goProject(state.project + 1);
+        }
+      }
+    });
+  }
+
+  /* ── Arranque ──────────────────────────────────────────────────────── */
+  function init() {
+    if (!DATA) {
+      console.error('GD_DATA no está disponible. Revisa js/data.js.');
+      return;
+    }
+
+    try {
+      els.main = $('#main');
+      els.screens = $$('.screen');
+      screens = els.screens;
+      els.live = $('#live-region');
+      els.fill = $('#levelbar-fill');
+      els.levelbar = $('#levelbar');
+      els.nodes = $('#levelbar-nodes');
+      els.prevSection = $('#prev-section');
+      els.nextSection = $('#next-section');
+      els.readout = $('#progress-readout');
+      els.soundToggle = $('#sound-toggle');
+      els.avatar = $('#avatar-img');
+      els.statsGrid = $('#stats-grid');
+      els.track = $('#levels-track');
+      els.viewport = $('#levels-viewport');
+      els.dots = $('#levels-dots');
+      els.levelCount = $('#levels-count');
+      els.levelPrev = $('#level-prev');
+      els.levelNext = $('#level-next');
+      els.skillsGrid = $('#skills-grid');
+      els.skillPanel = $('#skill-panel');
+      els.skillName = $('#skill-name');
+      els.skillLevelLabel = $('#skill-level-label');
+      els.skillLevelValue = $('#skill-level-value');
+      els.skillText = $('#skill-text');
+      els.skillSystems = $('#skill-systems');
+      els.skillBar = $('#skill-bar');
+      els.contactActions = $('#contact-actions');
+      els.modal = $('#project-modal');
+      els.modalClose = $('#modal-close');
+      els.modalKicker = $('#modal-kicker');
+      els.modalTitle = $('#modal-title');
+      els.modalMedia = $('#modal-media');
+      els.modalDescription = $('#modal-description');
+      els.modalPatterns = $('#modal-patterns');
+      els.modalTags = $('#modal-tags');
+      els.modalBars = $('#modal-bars');
+      els.modalLinks = $('#modal-links');
+      els.toast = $('#toast');
+      els.toastTitle = $('#toast-title');
+      els.toastMessage = $('#toast-message');
+
+      renderProfile();
+      renderLevelNodes();
+      renderProjects();
+      renderSkills();
+      renderContact();
+      bindEvents();
+
+      if (scene) scene.setSection(0, true);
+      setHud(0, true);
+
+      // Estado inicial del botón de sonido (siempre mute al cargar).
+      els.soundToggle.setAttribute('aria-pressed', 'false');
+      els.soundToggle.setAttribute('aria-label', 'Activar sonido');
+      els.soundToggle.title = 'Activar sonido';
+      els.live.textContent = 'Portafolio cargado. Sección Inicio, 0 por ciento.';
+
+      // Enlaces profundos: #proyectos, #skills, #stats o ?seccion=proyectos.
+      const requested = (
+        new URLSearchParams(window.location.search).get('seccion') ||
+        window.location.hash.replace('#', '')
+      ).toLowerCase();
+      const targetIndex = DATA.sections.findIndex(
+        (section) => section.id === requested || String(section.progress) === requested
+      );
+      if (targetIndex > 0) {
+        window.setTimeout(() => goSection(targetIndex), 90);
+      }
+
+      // Evita que el navegador restaure un scroll raro al cargar.
+      requestAnimationFrame(() => {
+        els.main.scrollTop = 0;
+      });
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(() => {
+          if (state.section === 0) els.main.scrollTop = 0;
+        });
+      }
+    } catch (error) {
+      console.error('Error inicializando el portafolio:', error);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
 })();

@@ -3,179 +3,270 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DragoDoro · Game &amp; .NET Developer</title>
-<meta name="description" content="Portafolio de DragoDoro: desarrollador de videojuegos en Unity y de herramientas de escritorio en .NET. Proyectos reales, código abierto y herramientas de Windows.">
-<meta property="og:title" content="DragoDoro · Game &amp; .NET Developer">
-<meta property="og:description" content="Videojuegos en Unity y herramientas de escritorio en .NET. Código abierto, releases y documentación de progreso.">
+<title>DragoDoro · Gameplay &amp; Systems Programmer</title>
+<meta name="description" content="Portafolio interactivo de DragoDoro, Gameplay & Systems Programmer. Proyectos en Unity 6, C#, C++ y shaders con una interfaz inspirada en Geometry Dash.">
+<meta property="og:title" content="DragoDoro · Gameplay &amp; Systems Programmer">
+<meta property="og:description" content="Proyectos, skills y stats de un programador generalista de videojuegos. Un portafolio jugable construido sin frameworks.">
 <meta property="og:image" content="https://srdragodoro.github.io/img/og.png">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="theme-color" content="#0A0D18">
+<meta name="theme-color" content="#0B192C">
+<meta name="color-scheme" content="dark">
 <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
-
-<script type="importmap">
-  {
-    "imports": {
-      "three": "https://unpkg.com/three@0.166.1/build/three.module.js"
-    }
-  }
-</script>
 </head>
 <body>
 
-<!-- Enlace de salto: accesibilidad, aparece al tabular -->
-<a class="skip" href="#proyectos" data-i18n="hero.cta">Ver proyectos</a>
+<a class="skip" href="#main">Saltar al contenido</a>
 
-<!-- ── Barra de navegación ───────────────────────────────────────── -->
-<header class="nav">
-  <div class="wrap nav__in">
-    <a class="nav__brand" href="#top" aria-label="DragoDoro, inicio">
-      <canvas class="nav__mark" width="22" height="22" aria-hidden="true"></canvas>
-      <span>DragoDoro</span>
-    </a>
-    <nav class="nav__links" id="nav-links" aria-label="Secciones">
-      <a href="#proyectos" data-i18n="nav.projects">Proyectos</a>
-      <a href="#habilidades" data-i18n="nav.skills">Habilidades</a>
-      <a href="#sobre-mi" data-i18n="nav.about">Sobre mí</a>
-      <a href="#contacto" data-i18n="nav.contact">Contacto</a>
-    </nav>
-    <button class="nav__toggle" type="button" aria-expanded="false" aria-controls="nav-links" aria-label="Abrir menú">
-      <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
+<!-- El mundo: cuadrícula parallax, suelo y cubo jugador -->
+<canvas id="world" aria-hidden="true"></canvas>
+
+<!-- ── Barra de progreso estilo nivel de Geometry Dash ─────────────── -->
+<header class="hud" aria-label="Progreso del nivel">
+  <a class="hud__brand" href="#" data-goto="0" aria-label="DragoDoro, volver al inicio">
+    <span class="hud__mark" aria-hidden="true">
+      <span class="hud__mark-face"><i></i></span>
+    </span>
+    <span class="hud__name">DRAGO<em>DORO</em></span>
+  </a>
+
+  <div class="hud__level">
+    <div class="levelbar" id="levelbar" role="progressbar" aria-label="Progreso del portafolio" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="Inicio: 0%">
+      <div class="levelbar__fill" id="levelbar-fill"></div>
+      <div class="levelbar__nodes" id="levelbar-nodes"></div>
+    </div>
+  </div>
+
+  <div class="hud__actions">
+    <button class="hud__step" id="prev-section" type="button" aria-label="Sección anterior">‹</button>
+    <button class="hud__step" id="next-section" type="button" aria-label="Sección siguiente">›</button>
+    <output class="hud__percent" id="progress-readout" aria-hidden="true">0%</output>
+    <button class="hud__sound" id="sound-toggle" type="button" aria-pressed="false" aria-label="Activar sonido" title="Activar sonido">
+      <svg class="icon icon--muted" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/>
+        <path d="M16 9l5 6m0-6l-5 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+      </svg>
+      <svg class="icon icon--sound" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/>
+        <path d="M16 9a4 4 0 010 6M18.5 6.5a8 8 0 010 11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+      </svg>
     </button>
-    <!-- El selector se genera desde window.LANGS (js/data.js) -->
-    <div class="lang" id="lang-switch" role="group" aria-label="Cambiar idioma"></div>
   </div>
 </header>
 
-<main id="top">
+<p class="sr-only" id="live-region" aria-live="polite"></p>
 
-  <!-- ── Hero ────────────────────────────────────────────────────── -->
-  <section class="hero" aria-labelledby="hero-name">
-    <!-- Cubo de vóxeles: se dibuja en canvas, no es una imagen -->
-    <canvas class="hero__cube" aria-hidden="true"></canvas>
+<main class="main" id="main" tabindex="-1">
 
-    <div class="hero__panel">
-      <p class="hero__role" data-i18n="hero.role">Game Developer · .NET Developer</p>
-      <h1 class="hero__name" id="hero-name">Drago<br>Doro</h1>
-      <p class="hero__lead" data-i18n="hero.lead"></p>
-      <div class="hero__actions">
-        <a class="btn" href="#proyectos" data-i18n="hero.cta">Ver proyectos</a>
-        <a class="btn btn--ghost" href="https://github.com/SrDragoDoro" target="_blank" rel="noopener me">GitHub ↗</a>
+  <!-- ── 0% · INICIO ─────────────────────────────────────────────────── -->
+  <section class="screen screen--home" id="sec-inicio" data-section="0" aria-labelledby="title-inicio">
+    <div class="home">
+      <div class="home__intro">
+        <p class="eyebrow"><span class="pulse" aria-hidden="true"></span> <span id="player-alias">PLAYER 01</span> · GAME PROGRAMMER</p>
+        <h1 class="hero-title" id="title-inicio">
+          <span class="hero-title__line">DRAGO</span>
+          <span class="hero-title__line hero-title__line--accent">DORO</span>
+        </h1>
+        <p class="hero-role" id="player-role">Gameplay <span>&amp;</span> Systems Programmer</p>
+        <p class="hero-lead" id="player-tagline"></p>
+        <ul class="hero-chips" aria-label="Tecnologías principales">
+          <li>UNITY 6</li>
+          <li>C#</li>
+          <li>C++</li>
+          <li>SHADERS</li>
+        </ul>
       </div>
+
+      <nav class="menu" aria-label="Menú principal">
+        <button class="menu__btn menu__btn--side" type="button" data-goto="2">
+          <span class="menu__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg>
+          </span>
+          <span class="menu__kicker">ICON KIT</span>
+          <span class="menu__label">SKILLS</span>
+        </button>
+
+        <button class="menu__btn menu__btn--play" type="button" data-goto="1">
+          <span class="menu__play" aria-hidden="true">▶</span>
+          <span class="menu__playtext">
+            <b>JUGAR NIVELES</b>
+            <small>VER PROYECTOS</small>
+          </span>
+        </button>
+
+        <button class="menu__btn menu__btn--side" type="button" data-goto="3">
+          <span class="menu__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>
+          </span>
+          <span class="menu__kicker">PERFIL</span>
+          <span class="menu__label">CV &amp; CONTACTO</span>
+        </button>
+      </nav>
+
+      <p class="home__hint">
+        <kbd>←</kbd><kbd>→</kbd> navegar · <span>haz clic en el cubo para saltar</span>
+      </p>
     </div>
-
-    <!-- Nota del canvas: el cubo se genera con código, semilla = fecha de hoy -->
-    <div class="hero__note">
-      <p><span data-i18n="cube.label">Cubo nº</span> <b class="hero__seed">—</b></p>
-      <p class="hero__note-text" data-i18n="cube.note">Se arma con código a partir de la fecha de hoy.</p>
-      <button class="hero__again" type="button" data-i18n="cube.again">Armar otro</button>
-    </div>
   </section>
 
-  <!-- ── Proyectos ──────────────────────────────────────────────── -->
-  <!-- El contenido de las tarjetas se genera desde js/data.js -->
-  <section class="sect wrap" id="proyectos" aria-labelledby="projects-title">
-    <header class="sect__head">
-      <h2 class="sect__title" id="projects-title" data-i18n="projects.title">Proyectos</h2>
-      <p class="sect__lead" data-i18n="projects.lead"></p>
-    </header>
-    <div class="pillars"></div>
-  </section>
-
-  <!-- ── Habilidades ────────────────────────────────────────────── -->
-  <section class="sect wrap sect--alt" id="habilidades" aria-labelledby="skills-title">
-    <header class="sect__head">
-      <h2 class="sect__title" id="skills-title" data-i18n="skills.title">Habilidades</h2>
-      <p class="sect__lead" data-i18n="skills.lead"></p>
-    </header>
-    <div class="skills"></div>
-  </section>
-
-  <!-- ── Sobre mí ───────────────────────────────────────────────── -->
-  <section class="sect wrap" id="sobre-mi" aria-labelledby="about-title">
-    <header class="sect__head">
-      <h2 class="sect__title" id="about-title" data-i18n="about.title">Sobre mí</h2>
-    </header>
-    <div class="about">
-      <div class="about__side">
-        <img class="about__photo" src="img/avatar.webp" alt="Foto de perfil de DragoDoro" width="320" height="320" loading="lazy">
-        <ul class="about__facts"></ul>
+  <!-- ── 35% · NIVELES / PROYECTOS ───────────────────────────────────── -->
+  <section class="screen" id="sec-proyectos" data-section="1" aria-labelledby="title-proyectos" hidden>
+    <header class="screen__head">
+      <div>
+        <p class="eyebrow">NIVEL 02 · 35%</p>
+        <h2 class="screen__title" id="title-proyectos">NIVELES</h2>
       </div>
-      <div class="about__text"></div>
+      <p class="screen__lead">Cuatro proyectos reales, de un motor propio de herramientas a un juego con la economía en el servidor. Abre una tarjeta para ver el brief técnico.</p>
+    </header>
+
+    <div class="levels">
+      <button class="levels__arrow" id="level-prev" type="button" aria-label="Proyecto anterior">‹</button>
+      <div class="levels__viewport" id="levels-viewport" tabindex="0" role="group" aria-roledescription="carrusel" aria-label="Selector de proyectos">
+        <div class="levels__track" id="levels-track"></div>
+      </div>
+      <button class="levels__arrow" id="level-next" type="button" aria-label="Proyecto siguiente">›</button>
     </div>
 
-    <!-- Trayectoria: se rellena desde js/data.js -->
-    <div class="journey">
-      <h3 class="kicker" data-i18n="journey.title">Trayectoria</h3>
-      <ol class="journey__list"></ol>
+    <div class="levels__foot">
+      <div class="levels__dots" id="levels-dots"></div>
+      <p class="levels__count" id="levels-count">1 / 4</p>
+      <p class="levels__hint"><kbd>A</kbd><kbd>D</kbd> o <kbd>↑</kbd><kbd>↓</kbd> cambian de nivel</p>
     </div>
   </section>
 
-  <!-- ── Juego interactivo ────────────────────────────────────── -->
-  <section class="sect wrap sect--alt" id="juego-interactivo" aria-labelledby="juego-title">
-    <header class="sect__head">
-      <h2 class="sect__title" id="juego-title" data-i18n="juego.title">Juega</h2>
-      <p class="sect__lead" data-i18n="juego.lead"></p>
+  <!-- ── 70% · ICON KIT / SKILLS ─────────────────────────────────────── -->
+  <section class="screen" id="sec-skills" data-section="2" aria-labelledby="title-skills" hidden>
+    <header class="screen__head">
+      <div>
+        <p class="eyebrow">NIVEL 03 · 70%</p>
+        <h2 class="screen__title" id="title-skills">ICON KIT</h2>
+      </div>
+      <p class="screen__lead">Selecciona una tecnología del garaje. El cubo cambia de skin al instante y el panel muestra qué sistemas he programado con ella.</p>
     </header>
-    <div class="juego__wrap">
-      <div id="juego-ui" class="juego__ui">
-        <div class="juego__hud">
-          <div class="juego__row"><span data-i18n="juego.score">Puntaje</span> <span id="juego-score" class="juego__value">0</span></div>
-          <div class="juego__row"><span data-i18n="juego.time">Tiempo</span> <span id="juego-time" class="juego__value">0s</span></div>
-        </div>
-        <div id="juego-overlay" class="juego__overlay">
-          <h1 id="juego-overlay-title">Colección 3D</h1>
-          <p id="juego-overlay-text">Recolecta las esferas doradas y evita los obstáculos rojos.</p>
-          <div class="juego__kbd">
-            <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>
-            <span data-i18n="juego.or">o</span>
-            <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd>
+
+    <div class="garage">
+      <div class="garage__grid" id="skills-grid" role="group" aria-label="Tecnologías"></div>
+
+      <div class="skill-panel" id="skill-panel">
+        <div class="skill-panel__head">
+          <div>
+            <p class="eyebrow">SKIN EQUIPADA</p>
+            <h3 id="skill-name">Unity 6</h3>
           </div>
-          <button id="juego-btn-start" class="juego__btn">Empezar a jugar</button>
+          <div class="mastery">
+            <span id="skill-level-label">Avanzado</span>
+            <b id="skill-level-value">90%</b>
+          </div>
         </div>
+        <div class="bar bar--mastery" aria-hidden="true">
+          <div class="bar__track"><div class="bar__fill" id="skill-bar"></div></div>
+        </div>
+        <p class="skill-panel__text" id="skill-text"></p>
+        <ul class="chips" id="skill-systems"></ul>
+        <p class="skill-panel__hint"><span aria-hidden="true">◈</span> El cubo de abajo cambia de color y patrón en tiempo real.</p>
       </div>
-      <canvas id="juego-canvas"></canvas>
     </div>
-    <p class="juego__hint" data-i18n="juego.hint">Mueve el cubo con WASD o las flechas.</p>
   </section>
+
+  <!-- ── 95% · STATS / PERFIL & CONTACTO ─────────────────────────────── -->
+  <section class="screen" id="sec-stats" data-section="3" aria-labelledby="title-stats" hidden>
+    <header class="screen__head">
+      <div>
+        <p class="eyebrow">NIVEL 04 · 95%</p>
+        <h2 class="screen__title" id="title-stats">STATS</h2>
+      </div>
+      <p class="screen__lead">Ficha de jugador y canales directos. Descarga el CV, revisa el código o copia el enlace del portafolio.</p>
+    </header>
+
+    <div class="profile-grid">
+      <article class="player-card">
+        <div class="player-card__top">
+          <div class="avatar">
+            <img id="avatar-img" src="img/avatar.webp" alt="Retrato de DragoDoro" width="320" height="320">
+            <span class="avatar__ring" aria-hidden="true"></span>
+          </div>
+          <div class="player-card__id">
+            <p class="eyebrow">PLAYER PROFILE</p>
+            <h3 id="player-name">Sr. DragoDoro</h3>
+            <p class="player-card__role" id="player-role-2">Gameplay &amp; Systems Programmer</p>
+            <span class="status-pill"><span aria-hidden="true"></span> <span id="player-availability">Abierto a nuevas oportunidades</span></span>
+          </div>
+        </div>
+
+        <p class="player-card__bio" id="player-bio"></p>
+        <div class="stats-grid" id="stats-grid"></div>
+      </article>
+
+      <aside class="contact-card">
+        <p class="eyebrow">CANALES</p>
+        <h3 id="contact-title">HABLEMOS</h3>
+        <p id="contact-lead"></p>
+        <div class="contact-actions" id="contact-actions"></div>
+        <p class="contact-card__note" id="contact-note"></p>
+      </aside>
+    </div>
+  </section>
+
 </main>
 
 <noscript>
-  <p class="wrap" style="padding-block:24px">
-    Este portafolio se construye con JavaScript en el navegador. Si lo desactivas,
-    los proyectos siguen estando en
-    <a href="https://github.com/SrDragoDoro">github.com/SrDragoDoro</a>.
-  </p>
+  <div class="noscript">
+    <p>Este portafolio se dibuja con JavaScript. Si lo desactivas, los proyectos siguen en
+      <a href="https://github.com/SrDragoDoro">github.com/SrDragoDoro</a>.</p>
+  </div>
 </noscript>
 
-<!-- ── Contacto ─────────────────────────────────────────────────── -->
-<footer class="foot" id="contacto">
-  <div class="wrap">
-    <h2 class="foot__title" data-i18n="footer.title">Hablemos</h2>
-    <p class="foot__p" data-i18n="footer.lead"></p>
-    <ul class="foot__links"></ul>
-    <p class="foot__made" data-i18n="footer.made"></p>
-  </div>
-</footer>
+<!-- ── Ficha técnica de proyecto ────────────────────────────────────── -->
+<dialog class="modal" id="project-modal" aria-labelledby="modal-title">
+  <div class="modal__shell">
+    <header class="modal__head">
+      <div>
+        <p class="eyebrow" id="modal-kicker">PROYECTO</p>
+        <h2 id="modal-title">Título</h2>
+      </div>
+      <button class="modal__close" id="modal-close" type="button" aria-label="Cerrar ficha">✕</button>
+    </header>
 
-<!-- ── Ficha de proyecto (visor) ────────────────────────────────── -->
-<dialog class="detail" aria-labelledby="detail-title">
-  <div class="detail__bar">
-    <h2 class="detail__title" id="detail-title"></h2>
-    <button class="detail__close" type="button" data-i18n="detail.close">Cerrar</button>
+    <div class="modal__scroll">
+      <div class="modal__media" id="modal-media"></div>
+
+      <div class="modal__cols">
+        <div class="modal__main">
+          <h3 class="modal__subtitle">BRIEF TÉCNICO</h3>
+          <p id="modal-description"></p>
+
+          <h3 class="modal__subtitle">PATRONES APLICADOS</h3>
+          <ul class="modal__patterns" id="modal-patterns"></ul>
+        </div>
+
+        <aside class="modal__aside">
+          <div class="modal__bars" id="modal-bars"></div>
+          <div class="tags" id="modal-tags"></div>
+          <div class="modal__links" id="modal-links"></div>
+        </aside>
+      </div>
+    </div>
   </div>
-  <div class="detail__stage"></div>
-  <div class="detail__thumbs"></div>
-  <div class="detail__body"></div>
 </dialog>
 
+<!-- ── Notificación / logro ─────────────────────────────────────────── -->
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <span class="toast__icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M7 4h10v4a5 5 0 01-10 0z"/><path d="M7 6H3v2a4 4 0 004 4M17 6h4v2a4 4 0 01-4 4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 13v4M8 21h8M9 21v-2h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+  </span>
+  <span class="toast__copy">
+    <b id="toast-title">¡LOGRO DESBLOQUEADO!</b>
+    <span id="toast-message"></span>
+  </span>
+</div>
+
 <script src="js/data.js"></script>
-<script src="js/fx.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/canvas.js"></script>
 <script src="js/main.js"></script>
-<script type="module" src="js/game.js"></script>
 </body>
 </html>

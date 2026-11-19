@@ -1,150 +1,193 @@
 # SrDragoDoro.github.io
 
-Portafolio de **DragoDoro** — Game Developer (Unity 6) y .NET Developer (WinForms).
-En línea: <https://srdragodoro.github.io>
+Portafolio de **DragoDoro** — Gameplay & Systems Programmer.
+Sitio estático publicado con GitHub Pages: **https://srdragodoro.github.io**
 
-Sitio estático **sin build y sin dependencias**: `index.html` + `css/` + `js/`, publicado
-tal cual con GitHub Pages. El sitio está en español por defecto y tiene conmutador a
-inglés y japonés (también detecta el idioma del navegador y recuerda la elección).
+La interfaz está inspirada en **Geometry Dash**: un nivel de cuatro checkpoints (0 %, 35 %, 70 %,
+95 %), un cubo jugador con física de salto, color triggers entre secciones, barras de progreso y
+un garaje de skins. Todo se dibuja con Canvas 2D y JavaScript vanilla, sin frameworks ni build.
 
 ---
 
-## Cómo está montado
+## Estructura
 
 ```text
-index.html        Esqueleto: cabecera, secciones, pie y el <dialog> del visor.
-css/style.css     Tokens de diseño y componentes, en bloques numerados.
-js/data.js        >>> TODO EL CONTENIDO <<<
-js/fx.js          Efectos de canvas: el cubo del hero, la marca y las portadas.
-js/main.js        Renderizador y controlador (idioma, tarjetas, visor, animaciones).
-img/              Imágenes en WebP (portadas, capturas, avatar, favicon).
-video/            Vídeos cortos en bucle, con su póster .webp.
+index.html            Estructura semántica: HUD, secciones, modal y toast.
+css/style.css         Tokens, componentes, animaciones y responsive.
+js/data.js            >>> TODO EL CONTENIDO EDITABLE <<<
+js/canvas.js          Motor 2D: parallax, suelo, cubo, física y partículas.
+js/audio.js           SFX sintetizados con Web Audio API (sin archivos).
+js/main.js            Navegación, carrusel, skills, modales y teclado.
+cv.html               CV imprimible (fuente del PDF, una página A4).
+cv/DragoDoro-CV.pdf   CV listo para descargar desde la sección Stats.
+img/                  Avatar, capturas, póster y favicon.
+video/                Gameplay en bucle para la ficha de Bookworm Adventure 2.
+games/                Juego independiente Collector 3D.
+serve.ps1             Servidor local de desarrollo (Windows, sin dependencias).
 ```
 
-La idea central: **`index.html` y `main.js` no se tocan para cambiar el contenido**.
-Todo sale de `js/data.js`.
+## Cómo se usa
 
-## Añadir o cambiar un proyecto
+- **Barra superior:** clic en cualquier checkpoint, o en `‹` / `›`.
+- **Teclado:** `←` / `→` cambian de sección. En Niveles, `A` / `D` o `↑` / `↓` cambian de
+  proyecto. `Esc` cierra la ficha de proyecto.
+- **Cubo:** haz clic sobre él para un salto vertical con rotación de 180°.
+- **Niveles:** usa las flechas laterales, los puntos o el swipe en móvil. El botón
+  *PLAY / VER CÓDIGO* abre el brief técnico del proyecto.
+- **Icon Kit:** al elegir una tecnología, el cubo cambia de color y patrón en tiempo real y el
+  panel inferior muestra el dominio y los sistemas programados.
+- **Stats:** descarga el CV, abre GitHub / releases o copia el enlace del portafolio.
+  Al copiar se muestra una notificación de *logro desbloqueado*.
+- **Sonido:** silenciado por defecto. El botón de la derecha activa los SFX sintetizados.
 
-Abre `js/data.js` y copia un objeto de `window.PROJECTS`:
+## Editar el contenido
+
+Abre `js/data.js`. No hace falta tocar HTML, CSS ni el resto de JS.
 
 ```js
-{
-  id: 'miproyecto',        // identificador único (se usa en el DOM)
-  pillar: 'juegos',        // 'juegos' | 'herramientas' | 'web'
-  featured: true,          // opcional: la tarjeta ocupa dos columnas
-  year: '2026',
-  img: 'miproyecto',       // nombre de un .webp en img/ (sin extensión) o null
-  video: { loop: 'mi-loop', poster: 'mi-poster' },
-  gallery: ['shots/mi-captura-1'],   // más capturas para la ficha
-  tags: ['Unity 6', 'C#'],
-  links: { repo: 'https://github.com/…', live: 'https://…', release: 'https://…' },
-  stats: [
-    ['40+', { es: 'estelas', en: 'trails', ja: '残像' }],
-    ['2', { es: 'releases', en: 'releases', ja: 'リリース' }],
-  ],
-  es: { title: '…', status: 'En desarrollo', text: '…', role: '…' },
-  en: { title: '…', status: 'In development', text: '…', role: '…' },
-  ja: { title: '…', status: '開発中', text: '…', role: '…' },
+window.GD_DATA = {
+  profile: { ... },        // Nombre, alias, rol, tagline y avatar.
+  sections: [ ... ],       // Checkpoints, etiquetas y paletas de color.
+  projects: [ ... ],       // Proyectos / niveles.
+  skills: [ ... ],         // Icon Kit, dominio y skins del cubo.
+  stats: { ... },          // Bio breve y cifras del perfil.
+  links: { ... },          // GitHub, releases, CV, LinkedIn, Itch, email…
+  contact: { ... },        // Textos de la tarjeta de contacto.
+};
+```
+
+### Añadir un proyecto
+
+Copia un objeto de `projects` y ajusta:
+
+| Campo            | Qué es                                                                 |
+| ---------------- | ---------------------------------------------------------------------- |
+| `id`             | Identificador único.                                                   |
+| `name`, `engine` | Título y motor/tecnología.                                             |
+| `year`, `status` | Periodo y estado mostrado en la tarjeta.                               |
+| `difficulty`     | `normal`, `harder`, `insane` o `demon` (dibuja la cara SVG).           |
+| `difficultyNote` | Texto corto bajo el resumen.                                           |
+| `accent`         | Color de la tarjeta y de sus barras.                                   |
+| `summary`        | Texto de la tarjeta.                                                   |
+| `description`    | Brief técnico del modal.                                               |
+| `patterns`       | Lista de patrones / decisiones técnicas.                               |
+| `bars`           | `[{ label, value }]` para las dos barras de progreso.                  |
+| `tags`           | Chips de tecnologías.                                                  |
+| `media`          | `{ type:'video'\|'image', src, poster }` o `null` para placeholder.    |
+| `links`          | `repo`, `release`, `itch`, `live`; los que falten no se muestran.       |
+
+### Activar LinkedIn, Itch.io o email
+
+En `js/data.js`, dentro de `links`, rellena los campos vacíos:
+
+```js
+links: {
+  github: 'https://github.com/SrDragoDoro',
+  linkedin: 'https://www.linkedin.com/in/tu-usuario',
+  itch: 'https://tu-usuario.itch.io',
+  email: 'tu@correo.com',
+  // ...
 }
 ```
 
-- `pillar` decide la sección y el color de acento de la tarjeta.
-- `img: null` → la portada se **genera con código** (parece una captura de un nivel de
-  arcade). Es lo que se usa cuando todavía no hay captura real.
-- `stats` son cifras **medidas**, no estimaciones.
-- `role` es lo que hiciste y cuál fue la parte técnicamente difícil. Sale en la tarjeta
-  y en la ficha.
+No hay que tocar `main.js`: los botones aparecen automáticamente y el botón de email copia la
+dirección al portapapeles con su toast de logro.
 
-Los otros bloques de `data.js`:
+### Cambiar los colores de una sección
 
-| Bloque       | Qué es                                                         |
-| ------------ | -------------------------------------------------------------- |
-| `PROFILE`    | Nombre, avatar y enlace a GitHub.                               |
-| `LANGS`      | Los idiomas disponibles: código, etiqueta y nombre.             |
-| `PILLARS`    | Las secciones de proyectos y su color.                          |
-| `PROJECTS`   | Los proyectos.                                                  |
-| `SKILLS`     | Los grupos de habilidades.                                      |
-| `JOURNEY`    | La trayectoria (fechas e hitos).                                |
-| `ABOUT`      | El texto de "Sobre mí" y las cifras.                            |
-| `CONTACT`    | Los canales. Los que no tengan `href` no se muestran.          |
-| `UI`         | Todos los textos fijos de la interfaz, en `es`, `en` y `ja`.    |
-
-`LANGS` es la única fuente de verdad del conmutador: el HTML solo tiene un
-contenedor `<div class="lang">` y `main.js` pinta un botón por idioma. Las cifras
-de `stats` viven en el proyecto (no dentro de `es`/`en`/`ja`) y su etiqueta puede
-ser un texto o un objeto `{ es, en, ja }` que se traduce al vuelo.
-
-### Añadir un idioma
-
-1. Añade la entrada en `window.LANGS` (`{ code: 'xx', label: 'XX', name: '…' }`).
-2. Copia el bloque `ja` de `PILLARS`, `PROJECTS`, `SKILLS`, `JOURNEY`, `ABOUT` y
-   `CONTACT`, y añade su clave en `UI`.
-3. No hay que tocar el HTML ni `main.js`: el conmutador y los textos fijos se
-   generan solos. Si falta una traducción, se usa el español como respaldo.
-
-Para añadir un canal de contacto, descomenta la línea del email en `CONTACT`:
+Cada entrada de `sections` tiene su paleta:
 
 ```js
-{ label: { es: 'Email', en: 'Email', ja: 'メール' }, href: 'mailto:tu@correo.com' },
+palette: {
+  bg: '#1E0B36',       // fondo
+  bg2: '#0D041A',      // degradado superior
+  ground: '#150724',   // suelo
+  ground2: '#080210',  // base del suelo
+  accent: '#C084FC',   // neón, HUD y acentos
+  accent2: '#A855F7',
+}
 ```
 
-## Imágenes y vídeos
+El canvas interpola los valores con `lerp` al cambiar de sección. La UI toma `accent` por
+variables CSS, así que el HUD y los focos cambian al mismo tiempo.
 
-- Las imágenes van en `img/` en **WebP**, de 1200 px como máximo. Convierte con:
-  `ffmpeg -i captura.png -vf "scale=1200:-2" -quality 82 img/captura.webp`
-- Las capturas de un proyecto van en `img/shots/`.
-- Un vídeo en bucle son dos archivos: `video/<nombre>.mp4` y su póster
-  `img/<nombre>.webp`. El bucle se reproduce solo cuando la tarjeta está a la vista.
-- Si añades un vídeo nuevo, actualiza a mano el `poster` del proyecto en `data.js`.
+### Añadir una skill
 
-## Los efectos de canvas (`js/fx.js`)
+Cada skill equipa una skin del cubo:
 
-- **El cubo del hero**: un cubo de vóxeles en proyección isométrica que gira solo y
-  sigue al puntero. La semilla es la fecha de hoy (`AAAAMMDD`), así que cambia cada
-  día; el botón "Armar otro" genera una semilla al azar.
-- **La marca** de la barra de navegación: el mismo cubo, quieto y con menos celdas.
-- **Las portadas generadas**: una escena de pixel art (cielo, astro, montañas y suelo)
-  calculada a partir del identificador del proyecto.
+```js
+{
+  id: 'csharp',
+  name: 'C#',
+  icon: 'csharp',       // csharp|cpp|unity|unreal|godot|shader|git|physics
+  level: 88,
+  levelLabel: 'Avanzado',
+  color: '#A78BFA',
+  skin: { base: '#7C3AED', accent: '#DDD6FE', pattern: 'checker' },
+  text: '…',
+  systems: ['…'],
+}
+```
 
-Si no te gusta el cubo, `js/fx.js` está aislado: `FX.cube()`, `FX.mark()` y
-`FX.cover()` se pueden sustituir por otras cosas sin tocar `main.js`.
+Patrones disponibles en el canvas: `visor`, `checker`, `stripes`, `split`, `ring`, `dots`,
+`cross` y `gradient`.
 
-## Cambiar los colores y las tipografías
+## CV en PDF
 
-Todo está en el bloque `:root` de `css/style.css`:
+El PDF de `cv/DragoDoro-CV.pdf` se genera desde `cv.html` (una página A4). Si cambias el CV:
 
-```css
---void: #0A0D18;      /* fondo */
---panel: #121729;     /* tarjetas */
---ink: #E9EDFB;       /* texto */
---cyan: #4BD8E8;      /* acento: juegos */
---lime: #7DF05C;      /* acento: herramientas */
---amber: #FFC24B;     /* acento: web */
+1. Abre `http://localhost:8770/cv.html`.
+2. Pulsa **Guardar como PDF**.
+3. Guarda el archivo como `cv/DragoDoro-CV.pdf`.
+
+También se puede regenerar sin abrir el navegador a mano:
+
+```powershell
+& "C:\Program Files\Google\Chrome\Application\chrome.exe" `
+  --headless=new --disable-gpu --no-pdf-header-footer `
+  --print-to-pdf=".\cv\DragoDoro-CV.pdf" `
+  "http://localhost:8770/cv.html"
 ```
 
 ## Probar en local
 
-Cualquier servidor estático sirve. Por ejemplo:
+Cualquier servidor estático sirve. El proyecto incluye uno sin dependencias:
 
 ```powershell
-powershell -File .\serve.ps1 8770
+powershell -ExecutionPolicy Bypass -File .\serve.ps1 8770
 ```
 
-o, con Python:
+Después: <http://localhost:8770>
 
-```bash
-python -m http.server 8770
-```
+También vale `python -m http.server 8770`.
+
+## Detalles técnicos
+
+- **Canvas:** `requestAnimationFrame`, `devicePixelRatio` limitado a 2, `dt` acotado para evitar
+  saltos al volver a la pestaña. El fondo tiene tres capas de parallax y una rejilla que reacciona
+  al desplazamiento del cubo.
+- **Física:** salto parabólico de ~0,45 s, rotación de 180° o 360° con easing, squash & stretch
+  al aterrizar, estela de partículas y anillo de impacto. El cubo vuelve a quedar de pie al
+  aterrizar para que la cara y el visor se lean siempre bien.
+- **Color triggers:** paletas RGB interpoladas por frame con un factor exponencial; la UI cambia
+  con variables CSS.
+- **Audio:** osciladores, envolventes y ruido generado en `AudioContext`. No hay archivos ni
+  librerías; el contexto se crea solo al pulsar el botón de sonido.
+- **Accesibilidad:** navegación por teclado, `aria-current` en el checkpoint activo,
+  `role="progressbar"`, diálogo nativo con foco atrapado, `aria-live` para anuncios y
+  `prefers-reduced-motion` para desactivar animaciones.
+- **Responsive:** sin overflow horizontal desde 320 px. El layout compacta el lobby en pantallas
+  bajas y el carrusel se convierte en una columna con swipe.
 
 ## Desplegar
 
-Se publica con GitHub Pages desde la rama `main`: `Settings → Pages → Deploy from a
-branch → / (main) / root`. No hay paso de build: lo que hay en el repositorio es
-exactamente lo que se sirve.
+GitHub Pages sirve la rama `main` tal cual:
+
+`Settings → Pages → Deploy from a branch → main → / (root)`
+
+No hay paso de build. Lo que hay en el repositorio es exactamente lo que se publica.
 
 ---
 
-**Datos de los proyectos**: salen de la API de GitHub (repositorios públicos de
-`SrDragoDoro`). Las cifras de `stats` se han medido sobre el código, las releases y
-los `manifest.json` de Unity.
+Hecho a mano con HTML5, CSS3, Canvas 2D y JavaScript vanilla. Sin frameworks, sin dependencias
+de build y sin archivos de audio externos.

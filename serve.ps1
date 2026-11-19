@@ -20,6 +20,7 @@ $mimes = @{
   '.js'   = 'text/javascript; charset=utf-8'; '.svg' = 'image/svg+xml'
   '.webp' = 'image/webp'; '.mp4' = 'video/mp4'; '.png' = 'image/png'
   '.jpg'  = 'image/jpeg'; '.gif'  = 'image/gif'; '.json' = 'application/json'
+  '.pdf'  = 'application/pdf'
 }
 
 while ($listener.IsListening) {
