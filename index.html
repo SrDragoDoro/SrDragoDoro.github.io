@@ -100,19 +100,31 @@
           </ul>
         </div>
 
-        <div class="wheel-wrap">
-          <div class="wheel" aria-label="Menú principal">
-            <img class="wheel__img" src="Imagenes/ballRecurso 8.png" alt="Rueda de opciones">
-            <nav class="wheel__items">
-              <a class="wheel__item" style="--angle:-90deg" href="#juegos" data-goto="1"><span>Videojuegos</span></a>
-              <a class="wheel__item" style="--angle:-135deg" href="#creaciones" data-goto="2"><span>Creaciones</span></a>
-              <a class="wheel__item" style="--angle:-180deg" href="#sobre-mi" data-goto="3"><span>Sobre mi</span></a>
-              <a class="wheel__item wheel__item--empty" style="--angle:-225deg" aria-hidden="true"></a>
-              <a class="wheel__item" style="--angle:-270deg" href="#sobre-mi" data-goto="3"><span>Mis redes</span></a>
-            </nav>
-            <span class="wheel__pointer" aria-hidden="true"></span>
-          </div>
-        </div>
+        <nav class="menu" aria-label="Menú principal">
+          <button class="menu__btn menu__btn--side" type="button" data-goto="2">
+            <span class="menu__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg>
+            </span>
+            <span class="menu__kicker">HERRAMIENTAS &amp; WEB</span>
+            <span class="menu__label">CREACIONES</span>
+          </button>
+
+          <button class="menu__btn menu__btn--play" type="button" data-goto="1">
+            <span class="menu__play" aria-hidden="true">▶</span>
+            <span class="menu__playtext">
+              <b>VIDEOJUEGOS</b>
+              <small>VER PROYECTOS</small>
+            </span>
+          </button>
+
+          <button class="menu__btn menu__btn--side" type="button" data-goto="3">
+            <span class="menu__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>
+            </span>
+            <span class="menu__kicker">PERFIL · SKILLS · CV</span>
+            <span class="menu__label">SOBRE MÍ</span>
+          </button>
+        </nav>
 
         <p class="home__hint">
           <kbd>←</kbd><kbd>→</kbd> navegar · <span>haz clic en el cubo para saltar</span>
