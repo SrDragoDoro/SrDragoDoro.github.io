@@ -32,8 +32,9 @@ serve.ps1             Servidor local de desarrollo (Windows, sin dependencias).
 - **Teclado:** `←` / `→` cambian de sección. En Niveles, `A` / `D` o `↑` / `↓` cambian de
   proyecto. `Esc` cierra la ficha de proyecto.
 - **Cubo:** haz clic sobre él para un salto vertical con rotación de 180°.
-- **Niveles:** usa las flechas laterales, los puntos o el swipe en móvil. El botón
-  *PLAY / VER CÓDIGO* abre el brief técnico del proyecto.
+- **Niveles:** usa las flechas laterales, los puntos o el swipe en móvil. Al cambiar de
+  proyecto, un telón de terciopelo rojo cierra la escena, cambia la tarjeta/repo y vuelve a
+  abrirse. El botón *PLAY / VER CÓDIGO* abre el brief técnico del proyecto.
 - **Icon Kit:** al elegir una tecnología, el cubo cambia de color y patrón en tiempo real y el
   panel inferior muestra el dominio y los sistemas programados.
 - **Stats:** descarga el CV, abre GitHub / releases o copia el enlace del portafolio.
@@ -173,6 +174,10 @@ También vale `python -m http.server 8770`.
   canvas por encima del contenido, gira 720°, cruza la pantalla con estelas, líneas de velocidad
   y ondas de choque, y se encoge en el nuevo checkpoint. La sección entra mientras el cubo pasa,
   así que el cambio queda enmascarado por el dash.
+- **Telón de proyecto:** el carrusel de Niveles se cambia con un telón CSS de terciopelo rojo,
+  guirnalda dorada y flecos. Cierra en 1 s, cambia la tarjeta y el repo detrás del telón, y abre
+  en 1,75 s comprimiendo la tela con `scaleX(0.2)` + `skewY` para simular que se frunce y se
+  recoge. El sello central muestra el número de nivel y el proyecto nuevo.
 - **Color triggers:** paletas RGB interpoladas por frame con un factor exponencial; la UI cambia
   con variables CSS.
 - **Audio:** osciladores, envolventes y ruido generado en `AudioContext`. No hay archivos ni

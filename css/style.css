@@ -2204,6 +2204,218 @@ kbd {
   line-height: 1.35;
 }
 
+/* ── 10b. Telón de teatro ───────────────────────────────────────────── */
+.curtain {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+  perspective: 1200px;
+  perspective-origin: 50% 38%;
+}
+
+.curtain.is-active {
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.curtain__panel {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  width: 51%;
+  background:
+    radial-gradient(ellipse at 55% -10%, rgba(255, 196, 140, 0.24), transparent 56%),
+    repeating-linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.36) 0px,
+      rgba(0, 0, 0, 0.04) 12px,
+      rgba(255, 255, 255, 0.09) 28px,
+      rgba(0, 0, 0, 0.2) 44px,
+      rgba(0, 0, 0, 0.41) 62px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0px,
+      transparent 128px,
+      rgba(255, 208, 150, 0.06) 158px,
+      transparent 196px
+    ),
+    linear-gradient(180deg, #a3121d 0%, #7c0a14 46%, #4a040b 100%);
+  background-size: auto, 64px 100%, 220px 100%, auto;
+  box-shadow: inset 0 -90px 130px rgba(0, 0, 0, 0.5);
+  transform-origin: top center;
+  transform: translateX(-85%) scaleX(0.2) skewY(3deg);
+  transition: transform 1.75s cubic-bezier(0.25, 1, 0.5, 1);
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.curtain__panel--left {
+  left: 0;
+  border-right: 4px solid #e8b647;
+  box-shadow:
+    inset -60px 0 80px rgba(0, 0, 0, 0.55),
+    6px 0 24px rgba(0, 0, 0, 0.45);
+}
+
+.curtain__panel--right {
+  right: 0;
+  border-left: 4px solid #e8b647;
+  box-shadow:
+    inset 60px 0 80px rgba(0, 0, 0, 0.55),
+    -6px 0 24px rgba(0, 0, 0, 0.45);
+  transform: translateX(85%) scaleX(0.2) skewY(-3deg);
+}
+
+.curtain.is-closed .curtain__panel {
+  transform: translateX(0) scaleX(1) skewY(0deg);
+  transition-duration: 1s;
+  transition-timing-function: cubic-bezier(0.6, 0, 0.3, 1);
+}
+
+/* Borde inferior pesado: el bajo de la tela. */
+.curtain__panel::before {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 22px;
+  border-top: 1px solid rgba(232, 182, 71, 0.25);
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.55) 46%, rgba(0, 0, 0, 0.78));
+  pointer-events: none;
+}
+
+/* Brillo de terciopelo cerca del borde interior. */
+.curtain__panel--left::after,
+.curtain__panel--right::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 38px;
+  background: linear-gradient(90deg, transparent, rgba(255, 214, 150, 0.28), transparent);
+  pointer-events: none;
+}
+
+.curtain__panel--left::after {
+  right: 0;
+}
+
+.curtain__panel--right::after {
+  left: 0;
+  transform: scaleX(-1);
+}
+
+.curtain__valance {
+  position: absolute;
+  top: var(--hud-h);
+  right: 0;
+  left: 0;
+  z-index: 4;
+  height: 56px;
+  border-top: 2px solid #e8b647;
+  border-bottom: 4px solid #e8b647;
+  background:
+    repeating-linear-gradient(90deg, #7d0a13 0 34px, #9e101b 34px 68px, #6a0710 68px 102px),
+    linear-gradient(180deg, #ad131f, #5a060e);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.62);
+  transform: translateY(-125%);
+  transition: transform 0.95s cubic-bezier(0.6, 0, 0.3, 1);
+}
+
+.curtain.is-closed .curtain__valance {
+  transform: translateY(0);
+}
+
+/* Flecos dorados bajo la guirnalda. */
+.curtain__valance::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: -18px;
+  left: 0;
+  height: 18px;
+  background: radial-gradient(circle at 18px 0, #e8b647 0 8px, transparent 9px) repeat-x;
+  background-size: 36px 18px;
+  filter: drop-shadow(0 4px 3px rgba(0, 0, 0, 0.45));
+  opacity: 0.92;
+}
+
+.curtain__seal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: center;
+  min-width: min(330px, 72vw);
+  padding: 18px 28px 17px;
+  border: 2px solid #e8b647;
+  border-radius: 16px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 214, 150, 0.16), transparent 58%),
+    linear-gradient(180deg, #5c0710, #2a0307);
+  box-shadow:
+    0 12px 0 #1a0204,
+    0 0 60px rgba(255, 190, 90, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.88);
+  transition: opacity 0.2s ease, transform 0.24s var(--ease-out);
+}
+
+.curtain.is-closed .curtain__seal {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+  transition:
+    opacity 0.25s ease 0.72s,
+    transform 0.3s var(--ease-out) 0.7s;
+}
+
+.curtain__seal-mark {
+  color: #e8b647;
+  font-size: 15px;
+  line-height: 1;
+  text-shadow: 0 0 14px rgba(232, 182, 71, 0.9);
+}
+
+.curtain__seal-kicker {
+  color: #e8b647;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+}
+
+.curtain__seal b {
+  color: #fff4dc;
+  font-family: var(--font-display);
+  font-size: clamp(26px, 3.4vw, 38px);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.4), 0 0 22px rgba(255, 190, 90, 0.18);
+}
+
+.curtain__seal #curtain-sub {
+  max-width: 32ch;
+  overflow: hidden;
+  color: #d8b89b;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ── 11. Responsive ─────────────────────────────────────────────────── */
 @media (max-width: 1020px) {
   .garage,
@@ -2642,6 +2854,26 @@ kbd {
   }
 }
 
+@media (max-width: 820px) {
+  .curtain__valance {
+    height: 46px;
+  }
+
+  .curtain__seal {
+    min-width: min(280px, 76vw);
+    padding: 15px 20px 14px;
+  }
+
+  .curtain__seal b {
+    font-size: 27px;
+  }
+
+  .curtain__seal #curtain-sub {
+    max-width: 26ch;
+    font-size: 8px;
+  }
+}
+
 /* ── 12. Movimiento reducido ────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   html {
@@ -2662,5 +2894,9 @@ kbd {
   .screen--out-right,
   .modal[open] {
     animation: none !important;
+  }
+
+  .curtain {
+    display: none !important;
   }
 }

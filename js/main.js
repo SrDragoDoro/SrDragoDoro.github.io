@@ -30,6 +30,7 @@
     project: 0,
     skill: 0,
     transitioning: false,
+    curtain: false,
     modalProject: null,
     toastTimer: 0,
     readout: 0,
@@ -241,6 +242,7 @@
   function goSection(index) {
     const total = DATA.sections.length;
     if (index < 0 || index >= total) return;
+    if (state.curtain) return;
     if (index === state.section || state.transitioning) return;
 
     state.transitioning = true;
@@ -368,10 +370,61 @@
   }
 
   function goProject(index, silent) {
+    if (state.curtain) return;
     const total = DATA.projects.length;
-    state.project = ((index % total) + total) % total;
-    updateProject(state.project, silent);
-    if (!silent) sound.play('click');
+    const target = ((index % total) + total) % total;
+    if (target === state.project) return;
+
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) {
+      state.project = target;
+      updateProject(target, silent);
+      if (!silent) sound.play('click');
+      return;
+    }
+
+    playCurtain(target, silent);
+  }
+
+  /* Cierre de telón → cambio de proyecto → apertura. */
+  function playCurtain(index, silent) {
+    const project = DATA.projects[index];
+    if (!project) return;
+
+    state.curtain = true;
+    els.curtainTitle.textContent = `NIVEL ${String(index + 1).padStart(2, '0')}`;
+    els.curtainSub.textContent = `${project.name} · ${project.engine}`;
+
+    els.curtain.classList.remove('is-closed');
+    els.curtain.classList.add('is-active');
+    void els.curtain.offsetWidth;
+    els.curtain.classList.add('is-closed');
+    if (!silent) sound.play('curtain');
+
+    const closeMs = 1000;
+    const holdMs = 350;
+    const openMs = 1750;
+
+    window.setTimeout(() => {
+      state.project = index;
+
+      // El carrusel cambia a puerta cerrada, sin deslizar bajo el telón.
+      const previousTransition = els.track.style.transition;
+      els.track.style.transition = 'none';
+      updateProject(index, true);
+      void els.track.offsetWidth;
+      els.track.style.transition = previousTransition;
+
+      window.setTimeout(() => {
+        els.curtain.classList.remove('is-closed');
+
+        window.setTimeout(() => {
+          els.curtain.classList.remove('is-active');
+          state.curtain = false;
+          els.live.textContent = `Proyecto ${index + 1} de ${DATA.projects.length}: ${project.name}.`;
+        }, openMs);
+      }, holdMs);
+    }, closeMs);
   }
 
   function syncProjectVideos() {
@@ -440,6 +493,7 @@
 
   /* ── Modal de proyecto ─────────────────────────────────────────────── */
   function openProject(index) {
+    if (state.curtain) return;
     const project = DATA.projects[index];
     if (!project) return;
 
@@ -827,6 +881,9 @@
       els.skillSystems = $('#skill-systems');
       els.skillBar = $('#skill-bar');
       els.contactActions = $('#contact-actions');
+      els.curtain = $('#curtain');
+      els.curtainTitle = $('#curtain-title');
+      els.curtainSub = $('#curtain-sub');
       els.modal = $('#project-modal');
       els.modalClose = $('#modal-close');
       els.modalKicker = $('#modal-kicker');

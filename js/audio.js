@@ -165,6 +165,13 @@
           this.tone({ freq: 900, to: 1700, type: 'sine', when: 0.18, dur: 0.16, vol: 0.04 });
           break;
 
+        case 'curtain':
+          this.noise(0, 0.38, 0.055, 1500);
+          this.noise(0.16, 0.22, 0.035, 900);
+          this.tone({ freq: 118, to: 58, type: 'sine', dur: 0.32, vol: 0.12 });
+          this.tone({ freq: 300, to: 190, type: 'triangle', when: 0.04, dur: 0.28, vol: 0.035 });
+          break;
+
         case 'select':
           this.tone({ freq: 660, to: 660, type: 'square', dur: 0.05, vol: 0.08, filter: 3400 });
           this.tone({ freq: 990, to: 1180, type: 'sine', when: 0.05, dur: 0.1, vol: 0.07 });
